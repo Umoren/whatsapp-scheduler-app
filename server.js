@@ -61,9 +61,19 @@ client.on('auth_failure', (msg) => {
     console.error('Authentication failed:', msg);
 });
 
-client.on('disconnected', (reason) => {
-    console.log('Client was disconnected:', reason);
+client.on('disconnected', async (reason) => {
+    console.log('Client was disconnected', reason);
     isClientReady = false;
+
+    // Wait a bit before attempting to reconnect
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    // Attempt to reinitialize
+    try {
+        await client.initialize();
+    } catch (e) {
+        console.error('Failed to reinitialize client:', e);
+    }
 });
 
 async function getImageMedia() {
@@ -110,9 +120,6 @@ Password: ${process.env.ZOOM_PASSWORD || 'Recovery'}
 
 Or use the link:
 ${process.env.ZOOM_LINK || 'https://zoom.us/j/92642189858?pwd=TUpkVElab1JTVTMzV1FGelRXYU9VZz09#success'}`;
-
-    const welcomeImageUrl = "https://i.imgur.com/5UFYCmC.jpeg";
-
 
     try {
         console.log('Getting chats...');
