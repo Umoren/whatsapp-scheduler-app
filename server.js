@@ -37,10 +37,18 @@ client.on('ready', () => {
     isClientReady = true;
 
     cron.schedule('15 7 * * *', async () => {
-        console.log('Performing daily connection check...');
-        if (!client.info) {
-            console.log('Client not connected, reconnecting...');
-            await client.initialize();
+        console.log('Performing daily connection check...', new Date().toISOString());
+        try {
+            if (!client.info) {
+                console.log('Client not connected, reconnecting...');
+                await client.initialize();
+            }
+            // Ping healthchecks.io
+            await axios.get('https://hc-ping.com/f51fcce0-5129-4c2d-bbce-ae2fe970cbe6');
+        } catch (error) {
+            console.error('Connection check failed:', error);
+            // You might want to ping a different URL for failures
+            await axios.get('https://hc-ping.com/f51fcce0-5129-4c2d-bbce-ae2fe970cbe6/fail');
         }
     }, {
         timezone: TIMEZONE
@@ -97,6 +105,24 @@ async function getImageMedia() {
     }
 }
 
+let groupId = null;
+
+async function findGroupId() {
+    if (groupId) return groupId;
+
+    const groupName = "Desert Island Support Group.";
+    const chats = await client.getChats();
+    const group = chats.find(chat => chat.name === groupName);
+
+    if (group) {
+        groupId = group.id._serialized;
+        console.log('Group ID found and stored:', groupId);
+        return groupId;
+    } else {
+        throw new Error('Group not found');
+    }
+}
+
 
 async function sendMessage() {
     if (!isClientReady) {
@@ -110,7 +136,6 @@ async function sendMessage() {
         await new Promise(resolve => client.once('ready', resolve));
     }
 
-    const groupName = "Desert Island Support Group.";
     const message = `Hi Islanders!
 
 Join the Desert Island meeting:
@@ -122,23 +147,15 @@ Or use the link:
 ${process.env.ZOOM_LINK || 'https://zoom.us/j/92642189858?pwd=TUpkVElab1JTVTMzV1FGelRXYU9VZz09#success'}`;
 
     try {
-        console.log('Getting chats...');
-        const chats = await client.getChats();
-        console.log('Chats retrieved successfully');
+        const id = await findGroupId();
+        const chat = await client.getChatById(id);
 
-        console.log('Finding group...');
-        const group = chats.find(chat => chat.name === groupName);
+        console.log('Getting image media...');
+        const media = await getImageMedia();
 
-        if (group) {
-            console.log('Getting image media...');
-            const media = await getImageMedia();
-
-            console.log('Sending message with media...');
-            await client.sendMessage(group.id._serialized, media, { caption: message });
-            console.log('Message and image sent successfully');
-        } else {
-            throw new Error('Group not found');
-        }
+        console.log('Sending message with media...');
+        await chat.sendMessage(media, { caption: message });
+        console.log('Message and image sent successfully');
     } catch (error) {
         console.error('Failed to send message:', error);
         if (error.message === 'Group not found') {
