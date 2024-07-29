@@ -110,10 +110,10 @@ async function sendMessage() {
         await new Promise(resolve => client.once('ready', resolve));
     }
 
-    const groupName = "TechDom YouTube";
+    const groupName = "Desert Island Support Group.";
     const message = `Hi Islanders!
 
-Join the Desert Island meeting starting in 10 minutes:
+Join the Desert Island meeting:
 
 Zoom Code:  ${process.env.ZOOM_CODE || '92642189858'}
 Password: ${process.env.ZOOM_PASSWORD || 'Recovery'}
@@ -201,7 +201,7 @@ app.use((err, req, res, next) => {
     res.status(500).send('An unexpected error occurred');
 });
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`Server is running on port ${port}`);
 });
 

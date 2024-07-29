@@ -1,12 +1,10 @@
-# fly.toml app configuration file generated for di-bot on 2024-07-29T16:43:26+01:00
+# fly.toml app configuration file generated for di-bot on 2024-07-29T20:21:37+01:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
 app = 'di-bot'
 primary_region = 'ams'
-
-[build]
 
 [[mounts]]
 source = 'whatsapp_auth'
@@ -15,17 +13,24 @@ destination = '/app/.wwebjs_auth'
 [http_service]
 internal_port = 3000
 force_https = true
-auto_stop_machines = "off"
+auto_stop_machines = 'off'
 auto_start_machines = true
 min_machines_running = 1
 processes = ['app']
 
-[[vm]]
-memory = '1gb'
-cpu_kind = 'shared'
-cpus = 1
+[http_service.concurrency]
+type = "connections"
+hard_limit = 550
+soft_limit = 500
 
-[[services.tcp_checks]]
+[[http_service.checks]]
 interval = "15s"
 timeout = "2s"
-grace_period = "10s"
+grace_period = "5s"
+method = "GET"
+path = "/healthz"
+protocol = "http"
+[[vm]]
+memory = '3gb'
+cpu_kind = 'shared'
+cpus = 2
