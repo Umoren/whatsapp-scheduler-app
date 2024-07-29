@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for di-bot on 2024-07-28T21:49:50+01:00
+# fly.toml app configuration file generated for di-bot on 2024-07-29T16:43:26+01:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -8,19 +8,19 @@ primary_region = 'ams'
 
 [build]
 
+[[mounts]]
+  source = 'whatsapp_auth'
+  destination = '/app/.wwebjs_auth'
+
 [http_service]
-internal_port = 3000
-force_https = true
-auto_stop_machines = 'stop'
-auto_start_machines = true
-min_machines_running = 0
-processes = ['app']
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
 
 [[vm]]
-memory = '1gb'
-cpu_kind = 'shared'
-cpus = 1
-
-[mounts]
-source = "whatsapp_auth"
-destination = "/app/.wwebjs_auth"
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
