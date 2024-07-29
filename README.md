@@ -14,7 +14,7 @@ This bot sends automated reminders to a specified WhatsApp group at scheduled ti
 - Node.js (v14 or later)
 - npm (usually comes with Node.js)
 - A WhatsApp account
-- (Optional) Termux if running on Android
+- Fly.io account
 
 ## Installation
 
@@ -36,13 +36,21 @@ This bot sends automated reminders to a specified WhatsApp group at scheduled ti
 2. Scan the QR code with your WhatsApp mobile app to authenticate.
 3. The bot will now send reminders according to the set schedule.
 
-## Running on Android (Termux)
+## Deploy and Run on Fly.io
+1. Install the Fly CLI: `curl -L https://fly.io/install.sh | sh`
+2. Log in to Fly: `fly auth login`
+3. Initialize your Fly app: `fly launch`
+4. Create a volume for persistent storage: `fly volumes create whatsapp_auth --size 1`
+5. Update your `fly.toml` file to include the volume:
+```toml
+[mounts]
+  source="whatsapp_auth"
+  destination="/app/.wwebjs_auth"
+```
+6. Deploy your app: `fly deploy`
+7. Once deployed, you'll need to authenticate WhatsApp. You can do this by checking the logs: `fly logs`
 
-1. Install Termux from the Google Play Store
-2. In Termux, install Node.js: `pkg install nodejs`
-3. Install git: `pkg install git`
-4. Clone this repository and follow the installation steps above
-5. Run the bot using `npm start`
+Look for the QR code in the logs and scan it with your WhatsApp mobile app.
 
 ## Contributing
 
