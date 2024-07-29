@@ -10,6 +10,7 @@ const port = process.env.PORT || 3000;
 let qrImageData = '';
 let isLoading = true;
 let isClientReady = false;
+const TIMEZONE = 'Europe/Paris';
 
 let cachedImageMedia = null;
 const WELCOME_IMAGE_URL = "https://i.imgur.com/5UFYCmC.jpeg";
@@ -35,13 +36,24 @@ client.on('ready', () => {
     console.log('Client is ready!');
     isClientReady = true;
 
+    cron.schedule('15 7 * * *', async () => {
+        console.log('Performing daily connection check...');
+        if (!client.info) {
+            console.log('Client not connected, reconnecting...');
+            await client.initialize();
+        }
+    }, {
+        timezone: TIMEZONE
+    });
+
+
     // Schedule the message to be sent at 7:20 AM GMT+1 every day
     cron.schedule('20 7 * * *', () => {
         if (isClientReady) {
             sendMessage().catch(error => console.error('Scheduled message failed:', error));
         }
     }, {
-        timezone: "Europe/Paris"
+        timezone: TIMEZONE
     });
 });
 
@@ -79,6 +91,13 @@ async function getImageMedia() {
 async function sendMessage() {
     if (!isClientReady) {
         throw new Error('Client is not ready');
+    }
+
+    if (!client.info) {
+        console.log('Client not ready, attempting to reconnect...');
+        await client.initialize();
+        // Wait for client to be ready
+        await new Promise(resolve => client.once('ready', resolve));
     }
 
     const groupName = "TechDom YouTube";
@@ -164,6 +183,10 @@ app.get('/send-test', async (req, res) => {
         console.error('Manual test failed:', error);
         res.status(500).send('Failed to send test message');
     }
+});
+
+app.get('/healthz', (req, res) => {
+    res.status(200).send('OK');
 });
 
 app.use((err, req, res, next) => {
