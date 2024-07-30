@@ -2,6 +2,7 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const path = require('path');
 const config = require('../config');
 const qrcode = require('qrcode')
+const fs = require('fs').promises;
 
 const MAX_RETRIES = 5;
 const RETRY_DELAY = 10000;
@@ -10,10 +11,28 @@ const RETRY_DELAY = 10000;
 let qrImageData = '';
 let isLoading = true;
 
+async function logAuthDir() {
+    try {
+        const files = await fs.readdir('/app/.wwebjs_auth');
+        console.log('Contents of .wwebjs_auth:', files);
+        for (const file of files) {
+            const stat = await fs.lstat(`/app/.wwebjs_auth/${file}`);
+            console.log(`${file} is ${stat.isSymbolicLink() ? 'symlink' : 'directory'}`);
+            if (file === 'session' || file === 'persistent_session') {
+                const subfiles = await fs.readdir(`/app/.wwebjs_auth/${file}`);
+                console.log(`Contents of ${file}:`, subfiles);
+            }
+        }
+    } catch (error) {
+        console.error('Error reading auth directories:', error);
+    }
+}
+
+
 const client = new Client({
     authStrategy: new LocalAuth({
         clientId: 'my-wwebjs-client',
-        dataPath: path.join(config.DB_PATH, '..', 'wwebjs_auth')
+        dataPath: '/app/.wwebjs_auth/session',
     }),
     puppeteer: {
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
@@ -44,6 +63,7 @@ client.on('disconnected', (reason) => {
 });
 
 async function initializeWithRetry() {
+    await logAuthDir();
     for (let i = 0; i < MAX_RETRIES; i++) {
         try {
             console.log(`Attempt ${i + 1} to initialize client...`);
