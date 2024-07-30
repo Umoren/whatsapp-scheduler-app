@@ -18,7 +18,16 @@ const WELCOME_IMAGE_URL = "https://i.imgur.com/5UFYCmC.jpeg";
 const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-        args: ['--no-sandbox'],
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
+            '--disable-gpu'
+        ],
     }
 });
 
@@ -222,4 +231,32 @@ app.listen(port, '0.0.0.0', () => {
     console.log(`Server is running on port ${port}`);
 });
 
-client.initialize().catch(err => console.error('Failed to initialize client:', err));
+const MAX_RETRIES = 5;
+const RETRY_DELAY = 10000; // 10 seconds
+
+async function initializeWithRetry() {
+    for (let i = 0; i < MAX_RETRIES; i++) {
+        try {
+            console.log(`Attempt ${i + 1} to initialize client...`);
+            await client.initialize();
+            console.log('Client initialized successfully');
+            return;
+        } catch (error) {
+            console.error(`Failed to initialize client (attempt ${i + 1}):`, error);
+            if (i < MAX_RETRIES - 1) {
+                console.log(`Retrying in ${RETRY_DELAY / 1000} seconds...`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            }
+        }
+    }
+    throw new Error('Failed to initialize client after multiple attempts');
+}
+
+initializeWithRetry().catch(err => console.error('Final initialization error:', err));
+
+
+process.on('SIGTERM', async () => {
+    console.log('SIGTERM received. Closing WhatsApp client...');
+    await client.destroy();
+    process.exit(0);
+});
