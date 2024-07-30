@@ -1,6 +1,5 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const path = require('path');
-const config = require('../config');
 const qrcode = require('qrcode');
 const fs = require('fs').promises;
 
@@ -19,6 +18,10 @@ async function logAuthDir() {
         if (files.includes('session')) {
             const sessionFiles = await fs.readdir(path.join(AUTH_DIR, 'session'));
             console.log('Contents of session directory:', sessionFiles);
+            if (sessionFiles.includes('session-my-wwebjs-client')) {
+                const clientFiles = await fs.readdir(path.join(AUTH_DIR, 'session', 'session-my-wwebjs-client'));
+                console.log('Contents of client session directory:', clientFiles);
+            }
         }
     } catch (error) {
         console.error('Error reading auth directories:', error);
@@ -31,14 +34,16 @@ const client = new Client({
         dataPath: AUTH_DIR
     }),
     puppeteer: {
+        headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
             '--disable-accelerated-2d-canvas', '--no-first-run', '--no-zygote',
-            '--single-process', '--disable-gpu']
+            '--single-process', '--disable-gpu'],
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
     }
 });
 
 client.on('qr', async (qr) => {
-    console.log('QR RECEIVED', qr);
+    console.log('QR RECEIVED. This should not happen if session is persisted correctly.');
     try {
         qrImageData = await qrcode.toDataURL(qr);
         isLoading = false;
@@ -52,7 +57,7 @@ client.on('ready', () => {
     isLoading = false;
 });
 
-client.on('authenticated', () => {
+client.on('authenticated', (session) => {
     console.log('Client is authenticated');
 });
 
@@ -72,6 +77,11 @@ async function initializeWithRetry() {
             console.log(`Attempt ${i + 1} to initialize client...`);
             await client.initialize();
             console.log('Client initialized successfully');
+            if (client.info) {
+                console.log('Client info:', JSON.stringify(client.info, null, 2));
+            } else {
+                console.log('Client initialized but info not available. This is unexpected.');
+            }
             return;
         } catch (error) {
             console.error(`Failed to initialize client (attempt ${i + 1}):`, error);
