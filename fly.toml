@@ -31,6 +31,6 @@ method = "GET"
 path = "/healthz"
 protocol = "http"
 [[vm]]
-memory = '3gb'
+memory = '2gb'
 cpu_kind = 'shared'
-cpus = 2
+cpus = 1
