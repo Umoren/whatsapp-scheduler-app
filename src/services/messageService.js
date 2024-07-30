@@ -1,7 +1,7 @@
 const { MessageMedia } = require('whatsapp-web.js');
 const axios = require('axios');
 const config = require('../config');
-const client = require('./whatsappClient');
+const { client } = require('./whatsappClient');
 
 let cachedImageMedia = null;
 let groupId = null;

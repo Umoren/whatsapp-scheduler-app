@@ -11,6 +11,8 @@ const RETRY_DELAY = 10000;
 let qrImageData = '';
 let isLoading = true;
 
+const BASE_AUTH_PATH = process.env.FLY_APP_NAME ? '/app/.wwebjs_auth' : path.join(__dirname, '..', '..', '.wwebjs_auth');
+
 async function ensureDirectoryExists(dir) {
     try {
         await fs.mkdir(dir, { recursive: true });
@@ -22,13 +24,12 @@ async function ensureDirectoryExists(dir) {
 }
 
 async function logAuthDir() {
-    const AUTH_DIR = '/app/.wwebjs_auth';
     try {
-        await ensureDirectoryExists(AUTH_DIR);
-        const files = await fs.readdir(AUTH_DIR);
+        await ensureDirectoryExists(BASE_AUTH_PATH);
+        const files = await fs.readdir(BASE_AUTH_PATH);
         console.log('Contents of .wwebjs_auth:', files);
         for (const file of files) {
-            const filePath = path.join(AUTH_DIR, file);
+            const filePath = path.join(BASE_AUTH_PATH, file);
             const stat = await fs.lstat(filePath);
             console.log(`${file} is ${stat.isSymbolicLink() ? 'symlink' : 'directory'}`);
             if (file === 'session' || file === 'persistent_session') {
@@ -50,7 +51,7 @@ async function logAuthDir() {
 const client = new Client({
     authStrategy: new LocalAuth({
         clientId: 'my-wwebjs-client',
-        dataPath: '/app/.wwebjs_auth/session',
+        dataPath: path.join(BASE_AUTH_PATH, 'session'),
     }),
     puppeteer: {
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
@@ -85,7 +86,7 @@ async function initializeWithRetry() {
     for (let i = 0; i < MAX_RETRIES; i++) {
         try {
             console.log(`Attempt ${i + 1} to initialize client...`);
-            await ensureDirectoryExists('/app/.wwebjs_auth/session');
+            await ensureDirectoryExists(BASE_AUTH_PATH, 'session')
             await client.initialize();
             console.log('Client initialized successfully');
             return;
@@ -99,6 +100,7 @@ async function initializeWithRetry() {
     }
     throw new Error('Failed to initialize client after multiple attempts');
 }
+
 
 module.exports = {
     client,
