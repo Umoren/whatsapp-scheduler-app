@@ -4,6 +4,7 @@ const qrcode = require('qrcode');
 const cron = require('node-cron');
 const axios = require('axios');
 const fs = require('fs').promises;
+const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -16,8 +17,47 @@ const TIMEZONE = 'Europe/London';
 let cachedImageMedia = null;
 const WELCOME_IMAGE_URL = "https://i.imgur.com/5UFYCmC.jpeg";
 
+fs.readdir('/app/.wwebjs_auth')
+    .then(files => console.log('Contents of .wwebjs_auth:', files))
+    .catch(err => console.error('Error reading .wwebjs_auth:', err));
+
+fs.access('/app/.wwebjs_auth', fs.constants.R_OK | fs.constants.W_OK)
+    .then(() => console.log('.wwebjs_auth is readable and writable'))
+    .catch(err => console.error('Permission error on .wwebjs_auth:', err));
+
+function getAuthPath() {
+    // Check if we're running in a Fly.io environment
+    if (process.env.FLY_APP_NAME) {
+        return '/app/.wwebjs_auth';
+    } else {
+        // Local development path
+        return path.join(__dirname, '.wwebjs_auth');
+    }
+}
+
+async function testVolumePersistence() {
+    const testFile = path.join(AUTH_PATH, 'persistence_test.txt');
+    const timestamp = new Date().toISOString();
+
+    try {
+        await fs.writeFile(testFile, `Test at ${timestamp}`);
+        console.log(`Wrote test file at ${timestamp}`);
+
+        const content = await fs.readFile(testFile, 'utf8');
+        console.log('Read test file:', content);
+    } catch (error) {
+        console.error('Error in persistence test:', error);
+    }
+}
+
+const AUTH_PATH = getAuthPath();
+const sessionDir = path.join(AUTH_PATH, 'session');
+
 const client = new Client({
-    authStrategy: new LocalAuth(),
+    authStrategy: new LocalAuth({
+        clientId: 'my-wwebjs-client',
+        dataPath: sessionDir
+    }),
     puppeteer: {
         args: [
             '--no-sandbox',
@@ -32,13 +72,21 @@ const client = new Client({
     }
 });
 
-fs.readdir('/app/.wwebjs_auth')
-    .then(files => console.log('Contents of .wwebjs_auth:', files))
-    .catch(err => console.error('Error reading .wwebjs_auth:', err));
+async function initializeApp() {
+    try {
+        await testVolumePersistence();
 
-fs.access('/app/.wwebjs_auth', fs.constants.R_OK | fs.constants.W_OK)
-    .then(() => console.log('.wwebjs_auth is readable and writable'))
-    .catch(err => console.error('Permission error on .wwebjs_auth:', err));
+        await fs.mkdir(sessionDir, { recursive: true });
+        console.log('Session directory created or already exists');
+
+        await client.initialize();
+    } catch (err) {
+        console.error('Error during app initialization:', err);
+    }
+}
+
+// Call the initialization function
+initializeApp();
 
 client.on('qr', async (qr) => {
     console.log('QR RECEIVED', qr);
