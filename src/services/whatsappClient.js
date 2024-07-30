@@ -11,22 +11,40 @@ const RETRY_DELAY = 10000;
 let qrImageData = '';
 let isLoading = true;
 
-async function logAuthDir() {
+async function ensureDirectoryExists(dir) {
     try {
-        const files = await fs.readdir('/app/.wwebjs_auth');
+        await fs.mkdir(dir, { recursive: true });
+    } catch (error) {
+        if (error.code !== 'EEXIST') {
+            throw error;
+        }
+    }
+}
+
+async function logAuthDir() {
+    const AUTH_DIR = '/app/.wwebjs_auth';
+    try {
+        await ensureDirectoryExists(AUTH_DIR);
+        const files = await fs.readdir(AUTH_DIR);
         console.log('Contents of .wwebjs_auth:', files);
         for (const file of files) {
-            const stat = await fs.lstat(`/app/.wwebjs_auth/${file}`);
+            const filePath = path.join(AUTH_DIR, file);
+            const stat = await fs.lstat(filePath);
             console.log(`${file} is ${stat.isSymbolicLink() ? 'symlink' : 'directory'}`);
             if (file === 'session' || file === 'persistent_session') {
-                const subfiles = await fs.readdir(`/app/.wwebjs_auth/${file}`);
-                console.log(`Contents of ${file}:`, subfiles);
+                try {
+                    const subfiles = await fs.readdir(filePath);
+                    console.log(`Contents of ${file}:`, subfiles);
+                } catch (error) {
+                    console.error(`Error reading ${file}:`, error.message);
+                }
             }
         }
     } catch (error) {
         console.error('Error reading auth directories:', error);
     }
 }
+
 
 
 const client = new Client({
@@ -67,6 +85,7 @@ async function initializeWithRetry() {
     for (let i = 0; i < MAX_RETRIES; i++) {
         try {
             console.log(`Attempt ${i + 1} to initialize client...`);
+            await ensureDirectoryExists('/app/.wwebjs_auth/session');
             await client.initialize();
             console.log('Client initialized successfully');
             return;
