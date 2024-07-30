@@ -34,6 +34,3 @@ protocol = "http"
 memory = '3gb'
 cpu_kind = 'shared'
 cpus = 2
-
-[deploy]
-release_command = "node checkSession.js"

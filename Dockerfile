@@ -44,4 +44,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm install
 COPY . .
-CMD [ "node", "src/server.js" ]
+COPY prod_start.sh .
+RUN chmod +x prod_start.sh
+
+CMD ["./prod_start.sh"]
