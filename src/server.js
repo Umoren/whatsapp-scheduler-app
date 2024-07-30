@@ -35,14 +35,21 @@ async function initializeApp() {
         }, { timezone: config.TIMEZONE });
 
         cron.schedule('20 7 * * *', async () => {
+            console.log('Cron job triggered at:', new Date().toISOString());
             if (client.info) {
+                console.log('Client is ready. Attempting to send scheduled message...');
                 try {
                     await sendMessage();
+                    console.log('Scheduled message sent successfully');
                 } catch (error) {
                     console.error('Scheduled message failed:', error);
                 }
+            } else {
+                console.log('Client not ready. Skipping scheduled message.');
             }
-        }, { timezone: config.TIMEZONE });
+        }, {
+            timezone: config.TIMEZONE
+        });
 
     } catch (err) {
         console.error('Error during app initialization:', err);
