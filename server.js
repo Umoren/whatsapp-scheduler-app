@@ -10,7 +10,7 @@ const port = process.env.PORT || 3000;
 let qrImageData = '';
 let isLoading = true;
 let isClientReady = false;
-const TIMEZONE = 'Europe/Paris';
+const TIMEZONE = 'Europe/London';
 
 let cachedImageMedia = null;
 const WELCOME_IMAGE_URL = "https://i.imgur.com/5UFYCmC.jpeg";
@@ -75,7 +75,9 @@ client.on('ready', () => {
 });
 
 const testCron = (cronName) => {
-    console.log(`${cronName} triggered at:`, new Date().toLocaleString('en-US', { timeZone: TIMEZONE }));
+    const serverTime = new Date().toLocaleString('en-US', { timeZone: 'UTC' });
+    const localTime = new Date().toLocaleString('en-US', { timeZone: TIMEZONE });
+    console.log(`${cronName} triggered at: ${localTime} (Server time: ${serverTime})`);
     // Add any other logic you want to test here
 };
 
@@ -226,10 +228,10 @@ app.get('/send-test', async (req, res) => {
     }
 });
 
-app.get('/test-cron', (req, res) => {
-    testCron('Manual test');
-    res.send('Cron job triggered manually. Check logs for details.');
-});
+// app.get('/test-cron', (req, res) => {
+//     testCron('Manual test');
+//     res.send('Cron job triggered manually. Check logs for details.');
+// });
 
 app.get('/healthz', (req, res) => {
     res.status(200).send('OK');
