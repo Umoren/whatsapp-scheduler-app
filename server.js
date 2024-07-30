@@ -74,6 +74,14 @@ client.on('ready', () => {
     });
 });
 
+const testCron = (cronName) => {
+    console.log(`${cronName} triggered at:`, new Date().toLocaleString('en-US', { timeZone: TIMEZONE }));
+    // Add any other logic you want to test here
+};
+
+cron.schedule('* * * * *', () => testCron('7:15 AM cron'), { timezone: TIMEZONE });
+cron.schedule('* * * * *', () => testCron('7:20 AM cron'), { timezone: TIMEZONE });
+
 client.on('auth_failure', (msg) => {
     console.error('Authentication failed:', msg);
 });
@@ -216,6 +224,11 @@ app.get('/send-test', async (req, res) => {
         console.error('Manual test failed:', error);
         res.status(500).send('Failed to send test message');
     }
+});
+
+app.get('/test-cron', (req, res) => {
+    testCron('Manual test');
+    res.send('Cron job triggered manually. Check logs for details.');
 });
 
 app.get('/healthz', (req, res) => {
