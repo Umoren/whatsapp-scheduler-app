@@ -55,5 +55,6 @@ typings/
 .env
 
 # WhatsApp Web session data
-.wwebjs_auth/
-.wwebjs_cache/
+.wwebjs_auth/*
+.wwebjs_cache/*
+wwebjs_auth/*
