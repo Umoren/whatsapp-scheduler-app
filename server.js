@@ -3,6 +3,7 @@ const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode');
 const cron = require('node-cron');
 const axios = require('axios');
+const fs = require('fs').promises;
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -30,6 +31,14 @@ const client = new Client({
         ],
     }
 });
+
+fs.readdir('/app/.wwebjs_auth')
+    .then(files => console.log('Contents of .wwebjs_auth:', files))
+    .catch(err => console.error('Error reading .wwebjs_auth:', err));
+
+fs.access('/app/.wwebjs_auth', fs.constants.R_OK | fs.constants.W_OK)
+    .then(() => console.log('.wwebjs_auth is readable and writable'))
+    .catch(err => console.error('Permission error on .wwebjs_auth:', err));
 
 client.on('qr', async (qr) => {
     console.log('QR RECEIVED', qr);
@@ -74,15 +83,6 @@ client.on('ready', () => {
     });
 });
 
-const testCron = (cronName) => {
-    const serverTime = new Date().toLocaleString('en-US', { timeZone: 'UTC' });
-    const localTime = new Date().toLocaleString('en-US', { timeZone: TIMEZONE });
-    console.log(`${cronName} triggered at: ${localTime} (Server time: ${serverTime})`);
-    // Add any other logic you want to test here
-};
-
-cron.schedule('* * * * *', () => testCron('7:15 AM cron'), { timezone: TIMEZONE });
-cron.schedule('* * * * *', () => testCron('7:20 AM cron'), { timezone: TIMEZONE });
 
 client.on('auth_failure', (msg) => {
     console.error('Authentication failed:', msg);
@@ -228,10 +228,7 @@ app.get('/send-test', async (req, res) => {
     }
 });
 
-// app.get('/test-cron', (req, res) => {
-//     testCron('Manual test');
-//     res.send('Cron job triggered manually. Check logs for details.');
-// });
+
 
 app.get('/healthz', (req, res) => {
     res.status(200).send('OK');
