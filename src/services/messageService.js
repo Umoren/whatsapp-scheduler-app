@@ -1,3 +1,4 @@
+require('dotenv').config()
 const { MessageMedia } = require('whatsapp-web.js');
 const axios = require('axios');
 const config = require('../config');
@@ -39,8 +40,7 @@ async function findGroupId() {
     const chats = await client.getChats();
     console.log(`Found ${chats.length} chats`);
 
-    console.log('Searching for group: Desert Island Support Group.');
-    const group = chats.find(chat => chat.name === "Desert Island Support Group.");
+    const group = chats.find(chat => chat.name === process.env.WHATSAPP_GROUP_NAME);
 
     if (group) {
         groupId = group.id._serialized;

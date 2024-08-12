@@ -1,57 +1,20 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode');
 const path = require('path');
-const config = require('../config');
-const qrcode = require('qrcode')
-const fs = require('fs').promises;
 
 const MAX_RETRIES = 5;
-const RETRY_DELAY = 10000;
-
+const RETRY_DELAY = 10000; // 10 seconds
 
 let qrImageData = '';
 let isLoading = true;
+let isAuthenticated = false;
 
 const BASE_AUTH_PATH = process.env.FLY_APP_NAME ? '/app/.wwebjs_auth' : path.join(__dirname, '..', '..', '.wwebjs_auth');
-
-async function ensureDirectoryExists(dir) {
-    try {
-        await fs.mkdir(dir, { recursive: true });
-    } catch (error) {
-        if (error.code !== 'EEXIST') {
-            throw error;
-        }
-    }
-}
-
-async function logAuthDir() {
-    try {
-        await ensureDirectoryExists(BASE_AUTH_PATH);
-        const files = await fs.readdir(BASE_AUTH_PATH);
-        console.log('Contents of .wwebjs_auth:', files);
-        for (const file of files) {
-            const filePath = path.join(BASE_AUTH_PATH, file);
-            const stat = await fs.lstat(filePath);
-            console.log(`${file} is ${stat.isSymbolicLink() ? 'symlink' : 'directory'}`);
-            if (file === 'session' || file === 'persistent_session') {
-                try {
-                    const subfiles = await fs.readdir(filePath);
-                    console.log(`Contents of ${file}:`, subfiles);
-                } catch (error) {
-                    console.error(`Error reading ${file}:`, error.message);
-                }
-            }
-        }
-    } catch (error) {
-        console.error('Error reading auth directories:', error);
-    }
-}
-
-
 
 const client = new Client({
     authStrategy: new LocalAuth({
         clientId: 'my-wwebjs-client',
-        dataPath: path.join(BASE_AUTH_PATH, 'session'),
+        dataPath: BASE_AUTH_PATH
     }),
     puppeteer: {
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
@@ -65,28 +28,34 @@ client.on('qr', async (qr) => {
     try {
         qrImageData = await qrcode.toDataURL(qr);
         isLoading = false;
+        isAuthenticated = false;
     } catch (error) {
         console.error('Failed to generate QR code:', error);
     }
 });
+
 client.on('ready', () => {
     console.log('Client is ready!');
+    isLoading = false;
+    isAuthenticated = true;
+    qrImageData = ''; // Clear QR code once authenticated
+});
+
+client.on('authenticated', () => {
+    console.log('Client is authenticated');
+    isAuthenticated = true;
+    qrImageData = ''; // Clear QR code once authenticated
 });
 
 client.on('auth_failure', (msg) => {
     console.error('Authentication failure:', msg);
-});
-
-client.on('disconnected', (reason) => {
-    console.log('Client was disconnected', reason);
+    isAuthenticated = false;
 });
 
 async function initializeWithRetry() {
-    await logAuthDir();
     for (let i = 0; i < MAX_RETRIES; i++) {
         try {
             console.log(`Attempt ${i + 1} to initialize client...`);
-            await ensureDirectoryExists(BASE_AUTH_PATH, 'session')
             await client.initialize();
             console.log('Client initialized successfully');
             return;
@@ -101,11 +70,22 @@ async function initializeWithRetry() {
     throw new Error('Failed to initialize client after multiple attempts');
 }
 
+function getQRImageData() {
+    return qrImageData;
+}
+
+function isQRLoading() {
+    return isLoading;
+}
+
+function isClientAuthenticated() {
+    return isAuthenticated;
+}
 
 module.exports = {
     client,
     initializeWithRetry,
-    getQRImageData: () => qrImageData,
-    isQRLoading: () => isLoading
+    getQRImageData,
+    isQRLoading,
+    isClientAuthenticated
 };
-

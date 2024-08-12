@@ -36,6 +36,18 @@ This bot sends automated reminders to a specified WhatsApp group at scheduled ti
 2. Scan the QR code with your WhatsApp mobile app to authenticate.
 3. The bot will now send reminders according to the set schedule.
 
+## Authentication
+
+This project uses WhatsApp Web's LocalAuth strategy to persist sessions. Here's how it works:
+
+1. When you first run the application, it will generate a QR code.
+2. Navigate to the `/qr` route in your browser to see this QR code.
+3. Scan the QR code with your WhatsApp mobile app to authenticate.
+4. Once authenticated, the session will be persisted, and you won't need to scan the QR code again unless you log out or clear the session data.
+
+The authentication process uses the `whatsapp-web.js` library's LocalAuth strategy, which stores session data in the `.wwebjs_auth` directory. This data is persisted across restarts, allowing for seamless re-authentication.
+
+
 ## Deploy and Run on Fly.io
 1. Install the Fly CLI: `curl -L https://fly.io/install.sh | sh`
 2. Log in to Fly: `fly auth login`
