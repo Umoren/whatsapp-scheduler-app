@@ -96,6 +96,7 @@ router.post('/schedule-message', async (req, res) => {
     try {
         const id = uuidv4();
         const result = await scheduleMessage(id, cronExpression, groupName, message, imageUrl);
+        console.log('Message scheduled:', result);
         res.status(200).json({ message: 'Message scheduled successfully', ...result });
     } catch (error) {
         console.error('Failed to schedule message:', error);

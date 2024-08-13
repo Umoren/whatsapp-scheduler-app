@@ -1,20 +1,53 @@
 require('dotenv').config()
 const { MessageMedia } = require('whatsapp-web.js');
 const axios = require('axios');
-const cron = require('node-cron');
+const schedule = require('node-schedule');
 const config = require('../config');
 const { client } = require('./whatsappClient');
-const parser = require('cron-parser')
+const fs = require('fs').promises;
+const path = require('path');
+
+const JOBS_FILE = path.join(__dirname, 'scheduledJobs.json');
 
 const scheduledJobs = new Map();
 
-function convertCronExpression(expression) {
-    const parts = expression.split(' ');
-    return parts.slice(0, 5).join(' '); // Take only the first 5 parts
+async function saveJobs() {
+    const jobsData = Array.from(scheduledJobs.entries()).map(([id, jobInfo]) => ({
+        id,
+        expression: jobInfo.expression,
+        groupName: jobInfo.groupName,
+        message: jobInfo.message,
+        imageUrl: jobInfo.imageUrl
+    }));
+    await fs.writeFile(JOBS_FILE, JSON.stringify(jobsData, null, 2));
 }
 
-function validateCronExpression(expression) {
-    return cron.validate(expression);
+async function loadJobs() {
+    try {
+        const data = await fs.readFile(JOBS_FILE, 'utf8');
+        const jobsData = JSON.parse(data);
+        jobsData.forEach(jobData => {
+            scheduleMessage(jobData.id, jobData.expression, jobData.groupName, jobData.message, jobData.imageUrl);
+        });
+        console.log('Loaded scheduled jobs:', jobsData.length);
+    } catch (error) {
+        if (error.code !== 'ENOENT') {
+            console.error('Error loading jobs:', error);
+        }
+    }
+}
+
+function validateAndNormalizeCronExpression(expression) {
+    const parts = expression.split(' ');
+    if (parts.length >= 6) {
+        // Remove seconds and year (if present)
+        parts.splice(0, 1);
+        if (parts.length > 5) parts.pop();
+    }
+    if (parts.length !== 5) {
+        throw new Error('Invalid cron expression');
+    }
+    return parts.join(' ');
 }
 
 function sanitizeInput(input) {
@@ -149,63 +182,65 @@ async function sendTestMessage(groupName, message, imageUrl = null) {
     }
 }
 
-function scheduleMessage(id, cronExpression, groupName, message, imageUrl = null) {
-    return new Promise((resolve, reject) => {
-        try {
-            const sanitizedGroupName = sanitizeInput(groupName);
-            const sanitizedMessage = sanitizeInput(message);
-            const sanitizedImageUrl = imageUrl ? sanitizeInput(imageUrl) : null;
+async function scheduleMessage(id, cronExpression, groupName, message, imageUrl = null) {
+    try {
+        console.log('Scheduling message with cron:', cronExpression);
+        const sanitizedGroupName = sanitizeInput(groupName);
+        const sanitizedMessage = sanitizeInput(message);
+        const sanitizedImageUrl = imageUrl ? sanitizeInput(imageUrl) : null;
 
-            const convertedCronExpression = convertCronExpression(cronExpression);
+        const normalizedCronExpression = validateAndNormalizeCronExpression(cronExpression);
+        console.log('Normalized cron expression:', normalizedCronExpression);
 
-            if (!validateCronExpression(convertedCronExpression)) {
-                throw new Error('Invalid cron expression');
-            }
-
-            const job = cron.schedule(convertedCronExpression, async () => {
-                if (client.info) {
-                    try {
-                        await sendTestMessage(sanitizedGroupName, sanitizedMessage, sanitizedImageUrl);
-                        console.log(`Scheduled message sent to ${sanitizedGroupName} at ${new Date()}`);
-                    } catch (error) {
-                        console.error('Failed to send scheduled message:', error);
-                    }
-                } else {
-                    console.log('Client not ready. Skipping scheduled message.');
+        const job = schedule.scheduleJob(normalizedCronExpression, async () => {
+            console.log(`Executing scheduled job ${id} at ${new Date()}`);
+            if (client.info) {
+                try {
+                    await sendTestMessage(sanitizedGroupName, sanitizedMessage, sanitizedImageUrl);
+                    console.log(`Scheduled message sent to ${sanitizedGroupName} at ${new Date()}`);
+                } catch (error) {
+                    console.error('Failed to send scheduled message:', error);
                 }
-            });
+            } else {
+                console.log('Client not ready. Skipping scheduled message.');
+            }
+        });
 
-            scheduledJobs.set(id, {
-                job,
-                expression: convertedCronExpression,
-                groupName: sanitizedGroupName,
-                message: sanitizedMessage,
-                imageUrl: sanitizedImageUrl
-            });
-            resolve({ id, cronExpression: convertedCronExpression });
-        } catch (error) {
-            reject(error);
-        }
-    });
+        scheduledJobs.set(id, {
+            job,
+            expression: normalizedCronExpression,
+            groupName: sanitizedGroupName,
+            message: sanitizedMessage,
+            imageUrl: sanitizedImageUrl
+        });
+        console.log(`Job scheduled with ID: ${id}`);
+        await saveJobs();
+        return { id, cronExpression: normalizedCronExpression };
+    } catch (error) {
+        console.error('Error scheduling message:', error);
+        throw error;
+    }
 }
 
-
-function cancelScheduledMessage(id) {
-    const job = scheduledJobs.get(id);
-    if (job) {
-        job.stop();
+async function cancelScheduledMessage(id) {
+    console.log(`Attempting to cancel job with ID: ${id}`);
+    const jobInfo = scheduledJobs.get(id);
+    if (jobInfo && jobInfo.job) {
+        jobInfo.job.cancel();
         scheduledJobs.delete(id);
+        console.log(`Job cancelled successfully: ${id}`);
+        await saveJobs();
         return true;
     }
+    console.log(`Job not found: ${id}`);
     return false;
 }
 
 function getScheduledJobs() {
     return Array.from(scheduledJobs.entries()).map(([id, jobInfo]) => {
-        const interval = parser.parseExpression(jobInfo.expression);
         return {
             id,
-            next: interval.next().toDate(),
+            next: jobInfo.job.nextInvocation(),
             groupName: jobInfo.groupName,
             message: jobInfo.message,
             imageUrl: jobInfo.imageUrl,
@@ -214,5 +249,7 @@ function getScheduledJobs() {
     });
 }
 
+// Load jobs when the module is imported
+loadJobs();
 
 module.exports = { sendMessage, sendTestMessage, scheduleMessage, getScheduledJobs, cancelScheduledMessage };

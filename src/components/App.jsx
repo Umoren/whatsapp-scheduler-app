@@ -80,6 +80,7 @@ function App() {
     }
 
     async function handleCancelJob(id) {
+        console.log('this is the id im cancelling?', id)
         try {
             const response = await fetch(`${API_URL}/cancel-schedule/${id}`, {
                 method: 'DELETE',

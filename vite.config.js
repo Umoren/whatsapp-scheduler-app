@@ -12,7 +12,7 @@ export default defineConfig({
             '/qr': 'http://localhost:3000',
             '/auth-status': 'http://localhost:3000',
             '/schedule-message': 'http://localhost:3000',
-            '/cancel-schedule/:id': 'http://localhost:3000',
+            '/cancel-schedule': 'http://localhost:3000',
             '/scheduled-jobs': 'http://localhost:3000',
         }
     },

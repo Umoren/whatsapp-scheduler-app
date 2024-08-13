@@ -24,11 +24,13 @@
     "express": "^4.19.2",
     "moment-timezone": "^0.5.45",
     "node-cron": "^3.0.3",
+    "node-schedule": "^2.1.1",
     "qrcode": "^1.5.3",
     "qrcode-terminal": "^0.12.0",
     "react": "^18.3.1",
     "react-cron-generator": "^2.0.12",
     "react-dom": "^18.3.1",
+    "react-toastify": "^10.0.5",
     "sqlite3": "^5.1.7",
     "whatsapp-web.js": "^1.25.0",
     "ws": "^8.18.0"
