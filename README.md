@@ -36,6 +36,12 @@ This bot sends automated reminders to a specified WhatsApp group at scheduled ti
 2. Scan the QR code with your WhatsApp mobile app to authenticate.
 3. The bot will now send reminders according to the set schedule.
 
+## API Endpoints
+
+- GET `/qr`: Displays the QR code for WhatsApp authentication
+- GET `/send-test`: Sends a test message to the configured group
+- GET `/healthz`: Health check endpoint
+
 ## Authentication
 
 This project uses WhatsApp Web's LocalAuth strategy to persist sessions. Here's how it works:

@@ -1,0 +1,93 @@
+:root {
+    --primary-color: #25D366;
+    --secondary-color: #128C7E;
+    --background-color: #ECE5DD;
+    --text-color: #075E54;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+.container-head {
+    max-width: 800px;
+    padding: 20px;
+    margin: 0 auto;
+}
+
+h1, h2 {
+    color: var(--secondary-color);
+}
+
+#status {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    display: none;
+}
+
+#qrCode {
+    max-width: 300px;
+    margin: 20px auto;
+    display: none;
+    border: 2px solid var(--secondary-color);
+    border-radius: 4px;
+}
+
+button, input[type="submit"] {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+button:hover, input[type="submit"]:hover {
+    background-color: var(--secondary-color);
+}
+
+form {
+    margin-top: 20px;
+}
+
+label {
+    font-weight: bold;
+}
+
+input[type="text"], input[type="url"], textarea {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+textarea {
+    resize: vertical;
+}
+
+#authSection, #messageSection {
+    display: none;
+}
+

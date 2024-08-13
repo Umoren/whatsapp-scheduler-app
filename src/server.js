@@ -1,6 +1,9 @@
+require('dotenv').config();
 const express = require('express');
+const path = require('path')
 const cron = require('node-cron');
 const axios = require('axios');
+const bodyParser = require('body-parser')
 const config = require('./config');
 const routes = require('./routes');
 const { client, initializeWithRetry } = require('./services/whatsappClient');
@@ -8,11 +11,25 @@ const { sendMessage } = require('./services/messageService');
 
 const app = express();
 
+const HEALTH_CHECK = process.env.HEALTH_CHECK
+const HEALTH_CHECK_FAIL = process.env.HEALTH_CHECK_FAIL
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+
+app.use(express.static(path.join(__dirname, '..', 'dist')));
+
 app.use('/', routes);
 
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);
     res.status(500).send('An unexpected error occurred');
+});
+
+
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
 });
 
 async function initializeApp() {
@@ -27,10 +44,10 @@ async function initializeApp() {
                     console.log('Client not connected, reconnecting...');
                     await client.initialize();
                 }
-                await axios.get('https://hc-ping.com/f51fcce0-5129-4c2d-bbce-ae2fe970cbe6');
+                await axios.get(HEALTH_CHECK);
             } catch (error) {
                 console.error('Connection check failed:', error);
-                await axios.get('https://hc-ping.com/f51fcce0-5129-4c2d-bbce-ae2fe970cbe6/fail');
+                await axios.get(HEALTH_CHECK_FAIL);
             }
         }, { timezone: config.TIMEZONE });
 

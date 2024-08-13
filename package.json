@@ -3,26 +3,39 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon src/server.js"
+    "start": "nodemon src/server.js",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@emotion/react": "^11.13.0",
+    "@emotion/styled": "^11.13.0",
+    "@mui/material": "^5.16.7",
     "axios": "^1.7.2",
     "better-sqlite3": "^11.1.2",
+    "body-parser": "^1.20.2",
+    "cron-parser": "^4.9.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "moment-timezone": "^0.5.45",
     "node-cron": "^3.0.3",
     "qrcode": "^1.5.3",
     "qrcode-terminal": "^0.12.0",
+    "react": "^18.3.1",
+    "react-cron-generator": "^2.0.12",
+    "react-dom": "^18.3.1",
     "sqlite3": "^5.1.7",
     "whatsapp-web.js": "^1.25.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "@vitejs/plugin-react": "^4.3.1",
+    "nodemon": "^3.1.4",
+    "vite": "^5.4.0"
   }
 }
