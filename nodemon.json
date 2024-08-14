@@ -1,0 +1,3 @@
+{
+    "ignore": ["src/services/scheduledJobs.json"]
+  }

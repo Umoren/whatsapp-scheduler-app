@@ -17,12 +17,10 @@
     "@emotion/styled": "^11.13.0",
     "@mui/material": "^5.16.7",
     "axios": "^1.7.2",
-    "better-sqlite3": "^11.1.2",
     "body-parser": "^1.20.2",
-    "cron-parser": "^4.9.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "moment-timezone": "^0.5.45",
+    "express-rate-limit": "^7.4.0",
     "node-cron": "^3.0.3",
     "node-schedule": "^2.1.1",
     "qrcode": "^1.5.3",
@@ -32,8 +30,7 @@
     "react-dom": "^18.3.1",
     "react-toastify": "^10.0.5",
     "sqlite3": "^5.1.7",
-    "whatsapp-web.js": "^1.25.0",
-    "ws": "^8.18.0"
+    "whatsapp-web.js": "^1.25.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",

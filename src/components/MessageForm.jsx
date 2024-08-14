@@ -1,61 +1,73 @@
 import React, { useState } from 'react';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Box from '@mui/material/Box';
-import Cron from 'react-cron-generator'
+import { Button, TextField, Box, MenuItem } from '@mui/material';
+import Cron from 'react-cron-generator';
 
 function MessageForm({ onSubmit, isScheduled = false }) {
     const [formData, setFormData] = useState({
-        groupName: '',
+        recipientType: 'group',
+        recipientName: '',
         message: '',
         imageUrl: '',
-        cronExpression: '0 0 * * *',
+        cronExpression: isScheduled ? '0 0 * * *' : ''
     });
 
-    const handleChange = (e) => {
+    const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prevData => ({ ...prevData, [name]: value }));
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleCronChange = (cronExpression) => {
-        setFormData(prevData => ({ ...prevData, cronExpression }));
+        setFormData(prev => ({ ...prev, cronExpression }));
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onSubmit(formData);
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        await onSubmit(formData);
     };
 
     return (
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+        <Box component="form" onSubmit={handleSubmit}>
             <TextField
+                select
+                name="recipientType"
+                label="Recipient Type"
+                value={formData.recipientType}
+                onChange={handleInputChange}
                 fullWidth
                 margin="normal"
-                label="Group Name"
-                name="groupName"
-                value={formData.groupName}
-                onChange={handleChange}
-                required
+            >
+                <MenuItem value="group">Group</MenuItem>
+                <MenuItem value="individual">Individual</MenuItem>
+            </TextField>
+            <TextField
+                name="recipientName"
+                label={formData.recipientType === 'group' ? "Group Name" : "Phone Number"}
+                value={formData.recipientName}
+                onChange={handleInputChange}
+                fullWidth
+                margin="normal"
             />
             <TextField
-                fullWidth
-                margin="normal"
-                label="Message"
                 name="message"
-                value={formData.message}
-                onChange={handleChange}
+                label="Message"
                 multiline
                 rows={4}
-                required
-            />
-            <TextField
+                value={formData.message}
+                onChange={handleInputChange}
                 fullWidth
                 margin="normal"
-                label="Image URL (optional)"
-                name="imageUrl"
-                value={formData.imageUrl}
-                onChange={handleChange}
             />
+
+            <TextField
+                name="imageUrl"
+                label="Image URL (optional)"
+                value={formData.imageUrl}
+                onChange={handleInputChange}
+                fullWidth
+                margin="normal"
+                helperText="You can upload your image to services like Imgur or Cloudinary and paste the URL here."
+            />
+
             {isScheduled && (
                 <Box sx={{ mt: 2, mb: 2 }}>
                     <Cron
@@ -66,7 +78,9 @@ function MessageForm({ onSubmit, isScheduled = false }) {
                     />
                 </Box>
             )}
-            <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>
+
+
+            <Button type="submit" variant="contained" color="primary">
                 {isScheduled ? 'Schedule Message' : 'Send Message'}
             </Button>
         </Box>

@@ -13,5 +13,6 @@ module.exports = {
     DB_PATH: DB_PATH,
     ZOOM_CODE: process.env.ZOOM_CODE,
     ZOOM_PASSWORD: process.env.ZOOM_PASSWORD,
-    ZOOM_LINK: process.env.ZOOM_LINK
+    ZOOM_LINK: process.env.ZOOM_LINK,
+    CLIENT_ID: process.env.CLIENT_ID,
 };

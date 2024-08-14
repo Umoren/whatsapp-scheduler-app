@@ -20,4 +20,5 @@ function AuthSection({ qrCode, getQRCode }) {
     );
 }
 
+
 export default AuthSection;
