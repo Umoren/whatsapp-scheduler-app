@@ -4,10 +4,13 @@ This bot sends automated reminders to a specified WhatsApp group at scheduled ti
 
 ## Features
 
-- Sends customizable messages to a WhatsApp group
-- Includes an image with the message
-- Scheduled messaging using cron jobs
-- Image caching for improved performance
+- **Multiple Recipients**: Send messages to up to 3 recipients (groups or individuals) at once.
+- **Flexible Scheduling**: Use cron expressions to schedule messages at any frequency.
+- **Image Support**: Send images along with your messages.
+- **Rate Limiting**: Implemented to prevent abuse and comply with WhatsApp's guidelines.
+- **Improved Error Handling**: Better validation and user-friendly error messages.
+- **Enhanced UI**: React-based frontend for easy message scheduling and management.
+
 
 ## Prerequisites
 
@@ -33,14 +36,16 @@ This bot sends automated reminders to a specified WhatsApp group at scheduled ti
 ## Usage
 
 1. Start the bot: `npm start`
-2. Scan the QR code with your WhatsApp mobile app to authenticate.
-3. The bot will now send reminders according to the set schedule.
+2. Open the web interface in your browser
+3. Authenticate by scanning the QR code with your WhatsApp
+4. Use the interface to send immediate messages or schedule future messages
 
 ## API Endpoints
 
-- GET `/qr`: Displays the QR code for WhatsApp authentication
-- GET `/send-test`: Sends a test message to the configured group
-- GET `/healthz`: Health check endpoint
+- POST `/send-message`: Send an immediate message
+- POST `/schedule-message`: Schedule a future message
+- GET `/scheduled-jobs`: Retrieve all scheduled jobs
+- DELETE `/cancel-schedule/:id`: Cancel a scheduled job
 
 ## Authentication
 

@@ -121,7 +121,7 @@ async function sendTestMessage(recipientType, recipient, message, imageUrl = nul
             const chats = await client.getChats();
             chat = chats.find(chat => chat.name === recipient);
             if (!chat) {
-                throw new Error('Group not found');
+                throw new Error(`Group not found: ${recipient}`);
             }
         } else {
             console.log('Getting chat for individual...');
@@ -130,23 +130,16 @@ async function sendTestMessage(recipientType, recipient, message, imageUrl = nul
         }
 
         if (imageUrl) {
-            console.log('Attempting to send message with media...');
-            try {
-                const media = await getImageMedia(imageUrl);
-                await chat.sendMessage(media, { caption: message });
-                console.log('Message with media sent successfully');
-            } catch (mediaError) {
-                console.error('Failed to send media message:', mediaError);
-                console.log('Falling back to text message with image URL...');
-                await chat.sendMessage(`${message}\n\nImage: ${imageUrl}`);
-                console.log('Fallback message sent successfully');
-            }
+            console.log('Getting image media...');
+            const media = await getImageMedia(imageUrl);
+            console.log('Sending message with media...');
+            await chat.sendMessage(media, { caption: message });
         } else {
-            console.log('Sending text message...');
+            console.log('Sending message without media...');
             await chat.sendMessage(message);
-            console.log('Text message sent successfully');
         }
 
+        console.log('Message sent successfully');
     } catch (error) {
         console.error('Failed to send message:', error);
         throw error;

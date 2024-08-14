@@ -134,7 +134,10 @@ function App() {
             console.log('Server response:', result);
 
             if (!response.ok) {
-                if (response.status === 429) {
+                if (result.error === 'Validation failed') {
+                    const errorMessages = result.details.map(err => err.message).join('. ');
+                    toast.error(`Validation error: ${errorMessages}`);
+                } else if (response.status === 429) {
                     toast.error(result.message);
                 } else {
                     throw new Error(result.error || `HTTP error! status: ${response.status}`);
@@ -142,7 +145,15 @@ function App() {
                 return;
             }
 
-            toast.success(result?.message ?? 'Message sent succesfully');
+            toast.success(result?.message || 'Message sent succesfully');
+
+            if (result.details) {
+                result.details.forEach(detail => {
+                    if (detail.status === 'rejected') {
+                        toast.error(`Failed to send to ${detail.recipient}: ${detail.error}`);
+                    }
+                });
+            }
 
 
             if (isScheduled) {
@@ -166,7 +177,7 @@ function App() {
                 )}
                 <Box sx={{ my: 4 }}>
                     <Typography variant="h4" component="h1" gutterBottom>
-                        Schedule a Message
+                        Schedule a WhatsApp Message
                     </Typography>
                     <Suspense fallback={<CircularProgress />}>
                         {!isAuthenticated ? (
