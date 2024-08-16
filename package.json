@@ -15,6 +15,7 @@
   "dependencies": {
     "@emotion/react": "^11.13.0",
     "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^5.16.7",
     "@mui/material": "^5.16.7",
     "axios": "^1.7.2",
     "body-parser": "^1.20.2",
@@ -23,14 +24,15 @@
     "express-rate-limit": "^7.4.0",
     "node-cron": "^3.0.3",
     "node-schedule": "^2.1.1",
+    "puppeteer": "^23.1.0",
     "qrcode": "^1.5.3",
     "qrcode-terminal": "^0.12.0",
     "react": "^18.3.1",
     "react-cron-generator": "^2.0.12",
     "react-dom": "^18.3.1",
     "react-toastify": "^10.0.5",
-    "sqlite3": "^5.1.7",
     "whatsapp-web.js": "^1.25.0",
+    "winston": "^3.14.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {

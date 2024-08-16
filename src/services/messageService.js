@@ -2,12 +2,14 @@ require('dotenv').config()
 const { MessageMedia } = require('whatsapp-web.js');
 const axios = require('axios');
 const schedule = require('node-schedule');
-const config = require('../config');
-const { client } = require('./whatsappClient');
+const { ensureInitialized } = require('./whatsappClient');
+const { createModuleLogger } = require('../middlewares/logger');
+const { WhatsAppClientError, BadRequestError, NotFoundError } = require('../utils/errors');
 const fs = require('fs').promises;
 const path = require('path');
 
 const JOBS_FILE = path.join(__dirname, 'scheduledJobs.json');
+const logger = createModuleLogger(path.basename(__filename));
 
 const scheduledJobs = new Map();
 
@@ -101,50 +103,58 @@ async function getImageMedia(imageUrl) {
 
 }
 
-async function sendTestMessage(recipientType, recipient, message, imageUrl = null) {
-    console.log('Starting sendTestMessage function...');
-    console.log('Recipient Type:', recipientType);
-    console.log('Recipient:', recipient);
-    console.log('Message:', message);
-    console.log('Image URL:', imageUrl);
-
-    if (!client.info) {
-        console.log('Client not ready, attempting to reconnect...');
-        await client.initialize();
-        console.log('Client reinitialized');
-    }
+async function sendTestMessage(recipientType, recipients, message, imageUrl = null) {
+    logger.info('Starting sendTestMessage function', { recipientType, recipients, message, imageUrl });
 
     try {
-        let chat;
-        if (recipientType === 'group') {
-            console.log('Finding group...');
-            const chats = await client.getChats();
-            chat = chats.find(chat => chat.name === recipient);
-            if (!chat) {
-                throw new Error(`Group not found: ${recipient}`);
+        const client = await ensureInitialized();
+        if (!client) {
+            throw new WhatsAppClientError('WhatsApp client is not initialized');
+        }
+
+        const recipientList = Array.isArray(recipients) ? recipients : recipients.split(',').map(r => r.trim());
+
+        const results = await Promise.all(recipientList.map(async (recipient) => {
+            try {
+                let chat;
+                if (recipientType === 'group') {
+                    logger.debug('Finding group...', { recipient });
+                    const chats = await client.getChats();
+                    chat = chats.find(chat => chat.name === recipient);
+                    if (!chat) {
+                        throw new NotFoundError(`Group not found: ${recipient}`);
+                    }
+                } else {
+                    logger.debug('Getting chat for individual...', { recipient });
+                    const cleanedNumber = recipient.replace(/\D/g, '');
+                    chat = await client.getChatById(cleanedNumber + '@c.us');
+                }
+
+                if (imageUrl) {
+                    logger.debug('Getting image media...', { imageUrl });
+                    const media = await getImageMedia(imageUrl);
+                    logger.debug('Sending message with media...');
+                    await chat.sendMessage(media, { caption: message });
+                } else {
+                    logger.debug('Sending message without media...');
+                    await chat.sendMessage(message);
+                }
+
+                logger.info(`Message sent successfully to ${recipient}`);
+                return { status: 'fulfilled', recipient };
+            } catch (error) {
+                logger.error(`Failed to send message to ${recipient}`, { error });
+                return { status: 'rejected', recipient, error: error.message };
             }
-        } else {
-            console.log('Getting chat for individual...');
-            const cleanedNumber = recipient.replace(/\D/g, '');
-            chat = await client.getChatById(cleanedNumber + '@c.us');
-        }
+        }));
 
-        if (imageUrl) {
-            console.log('Getting image media...');
-            const media = await getImageMedia(imageUrl);
-            console.log('Sending message with media...');
-            await chat.sendMessage(media, { caption: message });
-        } else {
-            console.log('Sending message without media...');
-            await chat.sendMessage(message);
-        }
-
-        console.log('Message sent successfully');
+        return results;
     } catch (error) {
-        console.error('Failed to send message:', error);
+        logger.error('Failed to send message', { error });
         throw error;
     }
 }
+
 
 async function scheduleMessage(id, cronExpression, recipientType, recipientName, message, imageUrl = null) {
     console.log(`Scheduling message with ID: ${id}`);
@@ -154,15 +164,11 @@ async function scheduleMessage(id, cronExpression, recipientType, recipientName,
 
         const job = schedule.scheduleJob(normalizedCronExpression, async () => {
             console.log(`Executing scheduled job ${id} at ${new Date()}`);
-            if (client.info) {
-                try {
-                    await sendTestMessage(recipientType, recipientName, message, imageUrl);
-                    console.log(`Scheduled message sent to ${recipientName} at ${new Date()}`);
-                } catch (error) {
-                    console.error('Failed to send scheduled message:', error);
-                }
-            } else {
-                console.log('Client not ready. Skipping scheduled message.');
+            try {
+                await sendTestMessage(recipientType, recipientName, message, imageUrl);
+                console.log(`Scheduled message sent at ${new Date()}`);
+            } catch (error) {
+                console.error('Failed to send scheduled message:', error);
             }
         });
 
