@@ -1,80 +1,68 @@
-# WhatsApp Group Reminder Bot
+# WhatsApp Message Scheduler
 
-This bot sends automated reminders to a specified WhatsApp group at scheduled times.
+## Table of Contents
+- [WhatsApp Message Scheduler](#whatsapp-message-scheduler)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Features](#features)
+  - [Getting Started](#getting-started)
+  - [API Endpoints](#api-endpoints)
+  - [Key Concepts](#key-concepts)
+  - [Future Updates](#future-updates)
+
+## Introduction
+
+The WhatsApp Message Scheduler is a web application that allows users to schedule and send messages via WhatsApp. It provides a user-friendly interface for composing messages, selecting recipients, and setting up scheduling using cron expressions.
 
 ## Features
 
-- **Multiple Recipients**: Send messages to up to 3 recipients (groups or individuals) at once.
-- **Flexible Scheduling**: Use cron expressions to schedule messages at any frequency.
-- **Image Support**: Send images along with your messages.
-- **Rate Limiting**: Implemented to prevent abuse and comply with WhatsApp's guidelines.
-- **Improved Error Handling**: Better validation and user-friendly error messages.
-- **Enhanced UI**: React-based frontend for easy message scheduling and management.
+- **WhatsApp Authentication**: Secure login using QR code scanning.
+- **Immediate Messaging**: Send messages to individuals or groups instantly.
+- **Message Scheduling**: Schedule messages to be sent at a later time using cron expressions.
+- **Multiple Recipients**: Send messages to up to 3 recipients at once.
+- **Image Support**: Include images in your messages by providing an image URL.
+- **Flexible Scheduling**: Use cron expressions for complex scheduling patterns.
+- **Job Management**: View and cancel scheduled jobs.
+- **Error Handling**: Robust error handling with user-friendly notifications.
+- **Rate Limiting**: Prevents abuse by limiting the number of requests per user.
 
+## Getting Started
 
-## Prerequisites
-
-- Node.js (v14 or later)
-- npm (usually comes with Node.js)
-- A WhatsApp account
-- Fly.io account
-
-## Installation
-
-1. Clone the repository:
+1. Clone the repository
 2. Install dependencies: `npm install`
-   
-## Configuration
-
-1. Open `server.js` and modify the following variables:
-- `groupName`: The name of your WhatsApp group
-- `message`: The content of your reminder message
-- `WELCOME_IMAGE_URL`: URL of the image to be sent with the message
-
-2. Adjust the cron schedule in `server.js` to set your desired reminder time.
-
-## Usage
-
-1. Start the bot: `npm start`
-2. Open the web interface in your browser
-3. Authenticate by scanning the QR code with your WhatsApp
-4. Use the interface to send immediate messages or schedule future messages
+3. Set up environment variables (refer to `.env.example`)
+4. Start the development server: `npm run dev`
+5. Open the application in your browser and scan the QR code with WhatsApp to authenticate
 
 ## API Endpoints
 
-- POST `/send-message`: Send an immediate message
-- POST `/schedule-message`: Schedule a future message
-- GET `/scheduled-jobs`: Retrieve all scheduled jobs
-- DELETE `/cancel-schedule/:id`: Cancel a scheduled job
+- `GET /qr`: Retrieve the QR code for WhatsApp authentication
+- `GET /auth-status`: Check the current authentication status
+- `POST /send-message`: Send an immediate message
+- `POST /schedule-message`: Schedule a message for later delivery
+- `GET /scheduled-jobs`: Retrieve a list of all scheduled jobs
+- `DELETE /cancel-schedule/:id`: Cancel a specific scheduled job
 
-## Authentication
+## Key Concepts
 
-This project uses WhatsApp Web's LocalAuth strategy to persist sessions. Here's how it works:
+1. **WhatsApp Client**: The application uses the `whatsapp-web.js` library to interact with WhatsApp.
 
-1. When you first run the application, it will generate a QR code.
-2. Navigate to the `/qr` route in your browser to see this QR code.
-3. Scan the QR code with your WhatsApp mobile app to authenticate.
-4. Once authenticated, the session will be persisted, and you won't need to scan the QR code again unless you log out or clear the session data.
+2. **Message Scheduling**: We use the `node-schedule` library to handle job scheduling based on cron expressions.
 
-The authentication process uses the `whatsapp-web.js` library's LocalAuth strategy, which stores session data in the `.wwebjs_auth` directory. This data is persisted across restarts, allowing for seamless re-authentication.
+3. **Validation**: Input validation is performed both on the client-side and server-side using Zod schemas.
 
+4. **Error Handling**: The application uses custom error classes and a centralized error handling middleware for consistent error responses.
 
-## Deploy and Run on Fly.io
-1. Install the Fly CLI: `curl -L https://fly.io/install.sh | sh`
-2. Log in to Fly: `fly auth login`
-3. Initialize your Fly app: `fly launch`
-4. Create a volume for persistent storage: `fly volumes create whatsapp_auth --size 1`
-5. Update your `fly.toml` file to include the volume:
-```toml
-[mounts]
-  source="whatsapp_auth"
-  destination="/app/.wwebjs_auth"
-```
-6. Deploy your app: `fly deploy`
-7. Once deployed, you'll need to authenticate WhatsApp. You can do this by checking the logs: `fly logs`
+5. **Logging**: Winston is used for logging, providing detailed insights into application behavior and issues.
 
-Look for the QR code in the logs and scan it with your WhatsApp mobile app.
+6. **Rate Limiting**: Express-rate-limit is implemented to prevent API abuse.
 
-## Contributing
+## Future Updates
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- Implement user accounts for managing multiple WhatsApp sessions
+- Add support for sending files and documents
+- Develop a mobile app version for on-the-go scheduling
+- Integrate with popular calendar applications for easier scheduling
+- Implement message templates for quick scheduling of common messages
+
+Feel free to contribute to the project by submitting pull requests or reporting issues on the GitHub repository.
