@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button, TextField, Box, MenuItem, CircularProgress, IconButton } from '@mui/material';
 import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import Cron from 'react-cron-generator';
+import { trackEvent } from '../utils/analytics';
 
 function MessageForm({ onSubmit, isScheduled = false }) {
     const [isLoading, setIsLoading] = useState(false);
@@ -31,12 +32,21 @@ function MessageForm({ onSubmit, isScheduled = false }) {
         setIsLoading(true);
         try {
             await onSubmit(formData);
+            trackEvent(isScheduled ? 'schedule_message' : 'send_message', {
+                recipientType: formData.recipientType,
+                hasImage: !!formData.imageUrl
+            });
         } catch (error) {
             console.error(error);
+            trackEvent('message_error', {
+                isScheduled,
+                error: error.message
+            });
         } finally {
             setIsLoading(false);
         }
     };
+
 
     const validateForm = () => {
         const newErrors = {};
