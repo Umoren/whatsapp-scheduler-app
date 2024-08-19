@@ -1,5 +1,4 @@
 const express = require('express');
-const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const {
     getQRImageData,
@@ -108,10 +107,9 @@ router.post('/schedule-message', messageLimiter, async (req, res, next) => {
             throw new BadRequestError('Cron expression is required for scheduling');
         }
 
-        const id = uuidv4();
-        logger.info('Scheduling message', { id, recipientType, recipientName });
-        const result = await scheduleMessage(id, cronExpression, recipientType, recipientName, message, imageUrl);
-        logger.info('Message scheduled successfully', { id });
+        logger.info('Scheduling message', { recipientType, recipientName });
+        const result = await scheduleMessage(cronExpression, recipientType, recipientName, message, imageUrl);
+        logger.info('Message scheduled successfully', { id: result.id });
         res.status(200).json({ message: 'Message scheduled successfully', ...result });
     } catch (error) {
         if (error.errors) {
@@ -119,21 +117,21 @@ router.post('/schedule-message', messageLimiter, async (req, res, next) => {
             logger.warn('Validation error', { errors: error.errors });
             res.status(400).json({ error: 'Validation failed', details: error.errors });
         } else {
-            logger.error('Failed to schedule message', { error });
-            next(new AppError('Failed to schedule message', 500));
+            logger.error('Failed to schedule message', { error: error.message, stack: error.stack });
+            next(new AppError('Failed to schedule message: ' + error.message, 500));
         }
     }
 });
 
 router.delete('/cancel-schedule/:id', async (req, res, next) => {
     const { id } = req.params;
-    logger.info('Cancel scheduled message route accessed', { id });
+    logger.info('Delete scheduled message route accessed', { id });
     try {
         await ensureInitialized();
-        const result = cancelScheduledMessage(id);
+        const result = await cancelScheduledMessage(id);
         if (result) {
-            logger.info('Scheduled message cancelled successfully', { id });
-            res.status(200).send('Scheduled message cancelled successfully');
+            logger.info('Scheduled message deleted successfully', { id });
+            res.status(200).send('Scheduled message deleted successfully');
         } else {
             logger.warn('Scheduled message not found', { id });
             throw new NotFoundError('Scheduled message not found');
@@ -142,8 +140,8 @@ router.delete('/cancel-schedule/:id', async (req, res, next) => {
         if (error instanceof NotFoundError) {
             res.status(404).json({ error: error.message });
         } else {
-            logger.error('Failed to cancel scheduled message', { error, id });
-            next(new AppError('Failed to cancel scheduled message', 500));
+            logger.error('Failed to delete scheduled message', { error, id });
+            next(new AppError('Failed to delete scheduled message', 500));
         }
     }
 });
@@ -152,8 +150,8 @@ router.get('/scheduled-jobs', async (req, res, next) => {
     logger.info('Get scheduled jobs route accessed');
     try {
         await ensureInitialized();
-        const jobs = getScheduledJobs();
-        logger.info('Retrieved scheduled jobs', { jobCount: jobs.length });
+        const jobs = await getScheduledJobs();
+        logger.info(`Returning ${jobs.length} jobs`);
         res.status(200).json(jobs);
     } catch (error) {
         logger.error('Failed to get scheduled jobs', { error });

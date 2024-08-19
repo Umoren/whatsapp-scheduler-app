@@ -5,43 +5,60 @@ const schedule = require('node-schedule');
 const { ensureInitialized } = require('./whatsappClient');
 const { createModuleLogger } = require('../middlewares/logger');
 const { WhatsAppClientError, BadRequestError, NotFoundError } = require('../utils/errors');
+const { v4: uuidv4 } = require('uuid');
 const fs = require('fs').promises;
 const path = require('path');
+const { encrypt, decrypt } = require('../utils/encryption');
+const { supabase } = require('../utils/supabaseClient');
 
-const JOBS_FILE = path.join(__dirname, 'scheduledJobs.json');
+
 const logger = createModuleLogger(path.basename(__filename));
+
 
 const scheduledJobs = new Map();
 
-
-async function saveJobs() {
-    console.log('Saving jobs to file...');
-    const jobsData = Array.from(scheduledJobs.values()).map(({ job, ...rest }) => rest);
-    await fs.writeFile(JOBS_FILE, JSON.stringify(jobsData, null, 2));
-    console.log(`Saved ${jobsData.length} jobs to file`);
-}
-
 async function loadJobs() {
-    console.log('Loading scheduled jobs...');
+    logger.info('Loading scheduled jobs from Supabase...');
     try {
-        const data = await fs.readFile(JOBS_FILE, 'utf8');
-        const jobsData = JSON.parse(data);
+        const { data, error } = await supabase
+            .from('scheduled_jobs')
+            .select('*')
+            .not('status', 'eq', 'cancelled');
+
+        if (error) throw error;
+
         scheduledJobs.clear();
-        for (const jobData of jobsData) {
-            console.log(`Scheduling saved job: ${jobData.id}`);
-            const job = schedule.scheduleJob(jobData.expression, async () => {
-                console.log(`Executing scheduled job ${jobData.id} at ${new Date()}`);
-                await sendTestMessage(jobData.groupName, jobData.message, jobData.imageUrl);
+        for (const jobData of data) {
+            logger.info(`Scheduling saved job: ${jobData.id}`);
+            const job = schedule.scheduleJob(jobData.id, jobData.cron_expression, async () => {
+                logger.info(`Executing scheduled job ${jobData.id} at ${new Date()}`);
+                try {
+                    await sendTestMessage(
+                        jobData.recipient_type,
+                        decrypt(jobData.recipient_name),
+                        decrypt(jobData.message),
+                        jobData.image_url ? decrypt(jobData.image_url) : null
+                    );
+                    await supabase
+                        .from('scheduled_jobs')
+                        .update({
+                            status: 'sent',
+                            next_run_at: calculateNextRunTime(jobData.cron_expression)
+                        })
+                        .match({ id: jobData.id });
+                } catch (error) {
+                    logger.error(`Failed to execute job ${jobData.id}:`, error);
+                    await supabase
+                        .from('scheduled_jobs')
+                        .update({ status: 'failed' })
+                        .match({ id: jobData.id });
+                }
             });
             scheduledJobs.set(jobData.id, { ...jobData, job });
         }
-        console.log(`Loaded ${jobsData.length} scheduled jobs`);
+        logger.info(`Loaded ${data.length} scheduled jobs`);
     } catch (error) {
-        if (error.code !== 'ENOENT') {
-            console.error('Error loading jobs:', error);
-        } else {
-            console.log('No saved jobs found. Starting with empty schedule.');
-        }
+        logger.error('Error loading jobs from Supabase:', error);
     }
 }
 
@@ -69,7 +86,6 @@ function validateAndNormalizeCronExpression(expression) {
     console.log('Normalized cron expression:', normalizedExpression);
     return normalizedExpression;
 }
-
 
 const imageCache = new Map();
 let groupId = null;
@@ -155,58 +171,118 @@ async function sendTestMessage(recipientType, recipients, message, imageUrl = nu
     }
 }
 
-
-async function scheduleMessage(id, cronExpression, recipientType, recipientName, message, imageUrl = null) {
-    console.log(`Scheduling message with ID: ${id}`);
+async function scheduleMessage(cronExpression, recipientType, recipientName, message, imageUrl = null, userId = null) {
+    const id = uuidv4();
+    logger.info(`Scheduling message with ID: ${id}`);
 
     try {
         const normalizedCronExpression = validateAndNormalizeCronExpression(cronExpression);
 
-        const job = schedule.scheduleJob(normalizedCronExpression, async () => {
-            console.log(`Executing scheduled job ${id} at ${new Date()}`);
+        const jobData = {
+            id,
+            cron_expression: normalizedCronExpression,
+            recipient_type: recipientType,
+            recipient_name: encrypt(recipientName),
+            message: encrypt(message),
+            image_url: imageUrl ? encrypt(imageUrl) : null,
+            next_run_at: calculateNextRunTime(normalizedCronExpression),
+            status: 'pending'
+        };
+
+        const { data, error } = await supabase.from('scheduled_jobs').insert(jobData);
+
+        if (error) {
+            logger.error('Error inserting job into Supabase:', error);
+            throw new Error('Failed to insert job into database');
+        }
+
+        const job = schedule.scheduleJob(id, normalizedCronExpression, async () => {
+            logger.info(`Executing scheduled job ${id} at ${new Date()}`);
             try {
                 await sendTestMessage(recipientType, recipientName, message, imageUrl);
-                console.log(`Scheduled message sent at ${new Date()}`);
+                logger.info(`Scheduled message sent at ${new Date()}`);
+                await supabase.from('scheduled_jobs').update({
+                    next_run_at: calculateNextRunTime(normalizedCronExpression),
+                    status: 'sent'
+                }).match({ id });
             } catch (error) {
-                console.error('Failed to send scheduled message:', error);
+                logger.error('Failed to send scheduled message:', error);
+                await supabase.from('scheduled_jobs').update({ status: 'failed' }).match({ id });
             }
         });
 
-        if (!job) {
-            throw new Error('Failed to schedule job');
-        }
+        scheduledJobs.set(id, { ...jobData, job });
 
-        scheduledJobs.set(id, { id, expression: normalizedCronExpression, recipientType, recipientName, message, imageUrl, job });
-        await saveJobs();
-        console.log(`Job scheduled successfully with ID: ${id}`);
+        logger.info(`Job scheduled successfully with ID: ${id}`);
         return { id, cronExpression: normalizedCronExpression };
     } catch (error) {
-        console.error('Error scheduling message:', error);
+        logger.error('Error scheduling message:', error);
         throw error;
     }
 }
 
 async function cancelScheduledMessage(id) {
-    console.log(`Attempting to cancel job with ID: ${id}`);
-    const jobInfo = scheduledJobs.get(id);
-    if (jobInfo) {
-        jobInfo.job.cancel();
-        scheduledJobs.delete(id);
-        await saveJobs();
-        console.log(`Job cancelled successfully: ${id}`);
+    try {
+        const { data, error } = await supabase
+            .from('scheduled_jobs')
+            .delete()
+            .match({ id });
+
+        if (error) throw error;
+
+        if (scheduledJobs.has(id)) {
+            const job = scheduledJobs.get(id);
+            if (job && job.job && typeof job.job.cancel === 'function') {
+                job.job.cancel();
+            }
+            scheduledJobs.delete(id);
+        }
+
+        logger.info(`Job deleted successfully: ${id}`);
         return true;
+    } catch (error) {
+        logger.error(`Error deleting job: ${id}`, error);
+        return false;
     }
-    console.log(`Job not found: ${id}`);
-    return false;
 }
 
-function getScheduledJobs() {
-    const jobs = Array.from(scheduledJobs.values()).map(({ job, ...rest }) => ({
-        ...rest,
-        next: job.nextInvocation()
-    }));
-    return jobs;
+
+async function getScheduledJobs() {
+    try {
+        const { data, error } = await supabase.from('scheduled_jobs').select('*');
+
+        if (error) {
+            logger.error('Supabase error:', error);
+            throw error;
+        }
+
+        logger.info('Raw data from Supabase:', { data });
+
+        if (!data || data.length === 0) {
+            logger.info('No scheduled jobs found');
+            return [];
+        }
+
+        // Decrypt sensitive data
+        const decryptedJobs = data.map(job => ({
+            ...job,
+            recipient_name: decrypt(job.recipient_name),
+            message: decrypt(job.message),
+            image_url: job.image_url ? decrypt(job.image_url) : null
+        }));
+
+        logger.info('Processed jobs:', { count: decryptedJobs.length });
+        return decryptedJobs;
+    } catch (error) {
+        logger.error('Error fetching scheduled jobs:', error);
+        throw error;
+    }
 }
+
+function calculateNextRunTime(cronExpression) {
+    return schedule.scheduleJob(cronExpression, () => { }).nextInvocation();
+}
+
 
 
 module.exports = {
