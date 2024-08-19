@@ -1,14 +1,30 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CircularProgress, Alert, Button } from '@mui/material';
-import CssBaseline from '@mui/material/CssBaseline';
-import Container from '@mui/material/Container';
-import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
-import Tabs from '@mui/material/Tabs';
-import Tab from '@mui/material/Tab';
-import { toast } from 'react-toastify';
+import { ThemeProvider, createTheme, styled } from '@mui/material/styles';
+import {
+    CircularProgress, Alert, CssBaseline,
+    Container,
+    Typography,
+    Box,
+    Paper,
+    Tabs,
+    Tab,
+    AppBar,
+    Toolbar,
+    IconButton,
+    Drawer,
+    List,
+    ListItem,
+    ListItemIcon,
+    ListItemText,
+    useMediaQuery
+} from '@mui/material';
 import { checkNetworkSpeed } from '../utils/networkCheck';
+import { ScheduledJobsProvider } from '../contexts/ScheduledJobsContext';
+import MenuIcon from '@mui/icons-material/Menu';
+import SendIcon from '@mui/icons-material/Send';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import { showToast } from './toast';
 
 const MessageForm = lazy(() => import('./MessageForm'));
 const AuthSection = lazy(() => import('./AuthSection'));
@@ -22,8 +38,23 @@ const theme = createTheme({
         secondary: {
             main: '#128c7e',
         },
+        background: {
+            default: '#f0f2f5',
+        },
     },
 });
+
+
+const StyledContainer = styled(Container)(({ theme }) => ({
+    marginTop: theme.spacing(4),
+    marginBottom: theme.spacing(4),
+}));
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+    padding: theme.spacing(3),
+    borderRadius: theme.shape.borderRadius,
+    boxShadow: 'none'
+}));
 
 const API_URL = '';
 
@@ -36,6 +67,8 @@ function App() {
     const [isClientReady, setIsClientReady] = useState(false);
     const [networkStatus, setNetworkStatus] = useState('good');
     const [isLoading, setIsLoading] = useState(true);
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
     useEffect(() => {
         const checkServerAndFetchData = async () => {
@@ -57,7 +90,7 @@ function App() {
             } catch (error) {
                 console.error('Server connection error:', error);
                 setIsServerConnected(false);
-                toast.error('Cannot connect to server. Please try again later.');
+                showToast('error', 'Error', 'Cannot connect to server. Please try again later.');
             } finally {
                 setIsLoading(false);
             }
@@ -94,26 +127,23 @@ function App() {
 
             if (response.status === 200 && data.qrCode) {
                 setQrCode(data.qrCode);
-                toast.info('Scan the QR code with WhatsApp');
+                showToast('info', 'Scan this QR code with WhatsApp. It\'s like Snapchat, but for login!');
             } else if (response.status === 200 && data.authenticated) {
-                toast.success('Already authenticated');
+                showToast('success', 'You\'re in! Ready to slide into those DMs?');
                 setIsAuthenticated(true);
                 checkAuthStatus();
             } else if (response.status === 202) {
-                toast.info(data.message);
-                // Retry after a short delay
+                showToast('info', data.message);
                 setTimeout(getQRCode, 3000);
             } else {
                 throw new Error(data.error || 'Failed to get QR code');
             }
         } catch (error) {
             console.error('Error getting QR code:', error);
-            toast.error('Error getting QR code: ' + error.message);
-            // Retry after a longer delay
+            showToast('error', 'Oops! QR code ghosted us. Wanna try again?');
             setTimeout(getQRCode, 5000);
         }
     }
-
 
     async function fetchScheduledJobs() {
         try {
@@ -130,46 +160,12 @@ function App() {
         }
     }
 
-    async function handleCancelJob(id) {
-        try {
-            const response = await fetch(`${API_URL}/cancel-schedule/${id}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to cancel job: ${response.status}`);
-            }
-
-            toast.success('Job cancelled successfully');
-            fetchScheduledJobs();
-        } catch (error) {
-            console.error('Error cancelling job:', error);
-            toast.error(`Error cancelling job: ${error.message}`);
-        }
-    }
-
-    /* disabled temporarily
-    const handleLogout = async () => {
-        try {
-            const response = await fetch(`${API_URL}/logout`, { method: 'POST' });
-            const data = await response.json();
-            if (data.success) {
-                setIsAuthenticated(false);
-                setIsClientReady(false);
-                setQrCode('');
-                setScheduledJobs([]);
-                toast.success('Logged out successfully');
-                // Immediately try to get a new QR code after logout
-                getQRCode();
-            } else {
-                throw new Error(data.message);
-            }
-        } catch (error) {
-            console.error('Logout failed:', error);
-            toast.error('Failed to logout. Please try again.');
+    const handleTabChange = (event, newValue) => {
+        setTabValue(newValue);
+        if (isMobile) {
+            setDrawerOpen(false);
         }
     };
-    */
 
     async function handleSubmit(messageData, isScheduled) {
         const endpoint = isScheduled ? `/schedule-message` : `/send-message`;
@@ -177,9 +173,7 @@ function App() {
         try {
             const response = await fetch(`${API_URL}${endpoint}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(messageData),
             });
 
@@ -198,31 +192,32 @@ function App() {
             }
 
             if (isScheduled) {
-                toast.success('Message scheduled successfully');
+                showToast('success', 'Message scheduled! It\'ll slide into their DMs right on time.');
                 fetchScheduledJobs();
             } else {
                 const successes = result.details.filter(d => d.status === 'fulfilled').length;
                 const failures = result.details.filter(d => d.status === 'rejected').length;
 
                 if (successes > 0 && failures === 0) {
-                    toast.success(`Message sent successfully to all ${successes} recipient(s)`);
+                    showToast('success', `Message sent to ${successes} peeps! You're on fire!`);
                 } else if (successes > 0 && failures > 0) {
-                    toast.warning(`Message sent to ${successes} recipient(s), failed for ${failures} recipient(s)`);
+                    showToast('warning', `Message reached ${successes} but missed ${failures}. Partial win?`);
                 } else if (successes === 0 && failures > 0) {
-                    toast.error(`Failed to send message to all ${failures} recipient(s)`);
+                    showToast('error', `Oof! Message ghosted all ${failures} recipients. Let's try again?`);
                 }
 
                 result.details.forEach(detail => {
                     if (detail.status === 'rejected') {
-                        toast.error(`Failed to send to ${detail.recipient}: ${detail.error}`);
+                        showToast('error', `Failed to slide into ${detail.recipient}'s DMs: ${detail.error}`);
                     }
                 });
             }
         } catch (error) {
             console.error(`Error ${isScheduled ? 'scheduling' : 'sending'} message:`, error);
-            toast.error(error.message);
+            showToast('error', error.message);
         }
     }
+
 
     const renderContent = () => {
         if (isLoading) {
@@ -242,7 +237,7 @@ function App() {
 
         if (!isClientReady) {
             return (
-                <Box display="flex" justifyContent="center" alignItems="center" height="200px">
+                <Box display="flex" justifyContent="center" alignItems="center" height="50vh">
                     <CircularProgress />
                     <Typography variant="h6" style={{ marginLeft: '20px' }}>
                         Initializing WhatsApp client...
@@ -252,47 +247,78 @@ function App() {
         }
 
         return (
-            <>
-                <Tabs value={tabValue} onChange={(e, newValue) => setTabValue(newValue)} sx={{ mb: 2 }}>
-                    <Tab label="Send Immediate Message" />
-                    <Tab label="Schedule Message" />
-                    <Tab label="Scheduled Jobs" />
-                </Tabs>
-                {tabValue === 0 && <MessageForm onSubmit={(data) => handleSubmit(data, false)} />}
-                {tabValue === 1 && <MessageForm onSubmit={(data) => handleSubmit(data, true)} isScheduled />}
-                {tabValue === 2 && <ScheduledJobs jobs={scheduledJobs} onCancelJob={handleCancelJob} />}
-            </>
+            <ScheduledJobsProvider>
+                <StyledPaper>
+                    {tabValue === 0 && <MessageForm onSubmit={(data) => handleSubmit(data, false)} onError={(error) => showToast('error', 'Message failed to send. The internet gremlins are at it again!')} />}
+                    {tabValue === 1 && <MessageForm onSubmit={(data) => handleSubmit(data, true)} isScheduled onError={(error) => showToast('error', 'Message failed to send. The internet gremlins are at it again!')} />}
+                    {tabValue === 2 && <ScheduledJobs />}
+                </StyledPaper>
+            </ScheduledJobsProvider>
         );
     };
+
+    const drawer = (
+        <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+            <List>
+                {['Send Message', 'Schedule Message', 'Scheduled Jobs'].map((text, index) => (
+                    <ListItem button key={text} onClick={() => handleTabChange(null, index)}>
+                        <ListItemIcon>
+                            {index === 0 ? <SendIcon /> : index === 1 ? <ScheduleIcon /> : <ListAltIcon />}
+                        </ListItemIcon>
+                        <ListItemText primary={text} />
+                    </ListItem>
+                ))}
+            </List>
+        </Drawer>
+    );
 
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
-            <Container maxWidth="md">
+            <AppBar position="static">
+                <Toolbar>
+                    <IconButton
+                        edge="start"
+                        color="inherit"
+                        aria-label="menu"
+                        onClick={() => setDrawerOpen(true)}
+                        sx={{ mr: 2, display: { sm: 'none' } }}
+                    >
+                        <MenuIcon />
+                    </IconButton>
+                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                        WhatsApp Scheduler
+                    </Typography>
+                </Toolbar>
+            </AppBar>
+            {drawer}
+            <StyledContainer maxWidth="md">
                 {!isServerConnected && (
-                    <Alert severity="error" sx={{ my: 2 }}>
-                        Server is not connected. Some features may not work.
-                    </Alert>
+                    <Box mb={2}>
+                        <Typography color="error">Server is not connected. Some features may not work.</Typography>
+                    </Box>
                 )}
                 {networkStatus === 'slow' && (
-                    <Alert severity="warning" sx={{ my: 2 }}>
-                        Your internet connection seems slow. This may affect the app's performance.
-                    </Alert>
+                    <Box mb={2}>
+                        <Typography color="warning">Your internet connection seems slow. This may affect the app's performance.</Typography>
+                    </Box>
                 )}
                 {networkStatus === 'offline' && (
-                    <Alert severity="error" sx={{ my: 2 }}>
-                        You appear to be offline. Please check your internet connection.
-                    </Alert>
+                    <Box mb={2}>
+                        <Typography color="error">You appear to be offline. Please check your internet connection.</Typography>
+                    </Box>
                 )}
-                <Box sx={{ my: 4 }}>
-                    <Typography variant="h4" component="h1" gutterBottom>
-                        Schedule a WhatsApp Message
-                    </Typography>
-                    <Suspense fallback={<CircularProgress />}>
-                        {renderContent()}
-                    </Suspense>
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', display: { xs: 'none', sm: 'block' } }}>
+                    <Tabs value={tabValue} onChange={handleTabChange} aria-label="basic tabs example">
+                        <Tab label="Send Message" icon={<SendIcon />} />
+                        <Tab label="Schedule Message" icon={<ScheduleIcon />} />
+                        <Tab label="Scheduled Jobs" icon={<ListAltIcon />} />
+                    </Tabs>
                 </Box>
-            </Container>
+                <Suspense fallback={<CircularProgress />}>
+                    {renderContent()}
+                </Suspense>
+            </StyledContainer>
         </ThemeProvider>
     );
 }

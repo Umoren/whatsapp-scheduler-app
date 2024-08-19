@@ -3,8 +3,11 @@ import { Button, TextField, Box, MenuItem, CircularProgress, IconButton } from '
 import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import Cron from 'react-cron-generator';
 import { trackEvent } from '../utils/analytics';
+import { useScheduledJobs } from '../contexts/ScheduledJobsContext';
 
-function MessageForm({ onSubmit, isScheduled = false }) {
+function MessageForm({ onSubmit, isScheduled = false, onError }) {
+    const { scheduleJob } = useScheduledJobs();
+
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         recipientType: 'group',
@@ -31,13 +34,18 @@ function MessageForm({ onSubmit, isScheduled = false }) {
 
         setIsLoading(true);
         try {
-            await onSubmit(formData);
+            if (isScheduled) {
+                await scheduleJob(formData);
+            } else {
+                await onSubmit(formData);
+            }
             trackEvent(isScheduled ? 'schedule_message' : 'send_message', {
                 recipientType: formData.recipientType,
                 hasImage: !!formData.imageUrl
             });
         } catch (error) {
             console.error(error);
+            onError(error); // Propagate error to parents
             trackEvent('message_error', {
                 isScheduled,
                 error: error.message
@@ -46,7 +54,6 @@ function MessageForm({ onSubmit, isScheduled = false }) {
             setIsLoading(false);
         }
     };
-
 
     const validateForm = () => {
         const newErrors = {};
