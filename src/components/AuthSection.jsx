@@ -1,14 +1,30 @@
 import React, { useState } from 'react';
 import { Box, Typography, Button, Paper, Container, CircularProgress } from '@mui/material';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
+import { showToast } from './toast';
 
-function AuthSection({ qrCode, getQRCode }) {
+function AuthSection({ onAuthenticated }) {
+    const [qrCode, setQrCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleGetQRCode = async () => {
+    const getQRCode = async () => {
         setIsLoading(true);
         try {
-            await getQRCode();
+            const response = await fetch('/qr');
+            const data = await response.json();
+
+            if (response.status === 200 && data.qrCode) {
+                setQrCode(data.qrCode);
+                showToast('info', 'Scan this QR code with WhatsApp to authenticate');
+            } else if (response.status === 200 && data.authenticated) {
+                showToast('success', 'WhatsApp authenticated successfully');
+                onAuthenticated();
+            } else {
+                throw new Error(data.error || 'Failed to get QR code');
+            }
+        } catch (error) {
+            console.error('Error getting QR code:', error);
+            showToast('error', 'Failed to get QR code. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -18,10 +34,10 @@ function AuthSection({ qrCode, getQRCode }) {
         <Container maxWidth="sm">
             <Paper elevation={3} sx={{ p: 4, mt: 4, textAlign: 'center' }}>
                 <Typography variant="h4" gutterBottom color="primary">
-                    Login
+                    Connect WhatsApp
                 </Typography>
                 <Typography variant="subtitle1" gutterBottom color="text.secondary">
-                    Scan the QR code with your WhatsApp to authenticate
+                    Scan the QR code with your WhatsApp to use the scheduler
                 </Typography>
 
                 <Box sx={{ my: 4 }}>
@@ -36,10 +52,6 @@ function AuthSection({ qrCode, getQRCode }) {
                                 borderRadius: 2,
                                 boxShadow: 3,
                             }}
-                            onError={(e) => {
-                                console.error('QR code image failed to load', e);
-                                console.log('QR code data:', qrCode.substring(0, 100) + '...');
-                            }}
                         />
                     ) : (
                         <Button
@@ -47,20 +59,13 @@ function AuthSection({ qrCode, getQRCode }) {
                             color="primary"
                             size="large"
                             startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <QrCode2Icon />}
-                            onClick={handleGetQRCode}
+                            onClick={getQRCode}
                             disabled={isLoading}
-                            sx={{ py: 1.5, px: 4 }}
                         >
                             {isLoading ? 'Generating...' : 'Generate QR Code'}
                         </Button>
                     )}
                 </Box>
-
-                {!qrCode && !isLoading && (
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                        Click the button above to generate a new QR code
-                    </Typography>
-                )}
             </Paper>
         </Container>
     );

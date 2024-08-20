@@ -156,6 +156,28 @@ async function ensureInitialized() {
     return client;
 }
 
+async function gracefulShutdown() {
+    logger.info('Initiating graceful shutdown of WhatsApp client...');
+    if (client) {
+        try {
+            await client.destroy();
+            logger.info('WhatsApp client destroyed successfully.');
+        } catch (error) {
+            logger.error('Error during WhatsApp client shutdown:', error);
+        }
+    } else {
+        logger.info('No active WhatsApp client to shut down.');
+    }
+    clientState = {
+        isLoading: false,
+        isAuthenticated: false,
+        isInitialized: false,
+        isClientReady: false
+    };
+    qrImageData = '';
+    logger.info('WhatsApp client shutdown complete.');
+}
+
 // Handle process termination
 process.on('SIGTERM', async () => {
     console.log('SIGTERM received. Cleaning up...');
@@ -174,5 +196,6 @@ module.exports = {
     getClientReadyStatus,
     logout,
     ensureInitialized,
+    gracefulShutdown,
     getClient: () => client
 };

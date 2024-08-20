@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useCallback } from 'react';
-import axios from 'axios';
+import axios from '../components/utils/axiosConfig';
+import { supabaseClient } from '../components/utils/supabaseClientConfig';
 import { showToast } from '../components/toast';
 
 const ScheduledJobsContext = createContext();
@@ -9,35 +10,63 @@ export const ScheduledJobsProvider = ({ children }) => {
 
     const fetchJobs = useCallback(async () => {
         try {
-            const response = await axios.get('/scheduled-jobs');
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                console.error('No active session');
+                setJobs([]);
+                return;
+            }
+
+            const response = await axios.get('/scheduled-jobs', {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                }
+            });
             console.log('API response:', response.data);
             setJobs(response.data);
         } catch (error) {
             console.error('Failed to fetch jobs:', error);
             setJobs([]);
+            showToast('error', 'Failed to fetch scheduled jobs');
         }
     }, []);
 
 
     const scheduleJob = useCallback(async (jobData) => {
         try {
-            const response = await axios.post('/schedule-message', jobData);
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) throw new Error('No active session');
+
+            const response = await axios.post('/schedule-message', jobData, {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                }
+            });
             fetchJobs();
-            showToast('success', 'Yaaay!', 'Message Scheduled successfully');
+            showToast('success', 'Message Scheduled successfully');
             return response.data;
         } catch (error) {
             console.error('Failed to schedule job:', error);
-            // showToast('error', 'Error', error?.message);
+            showToast('error', 'Failed to schedule job');
             throw error;
         }
     }, [fetchJobs]);
 
     const cancelJob = useCallback(async (jobId) => {
         try {
-            await axios.delete(`/cancel-schedule/${jobId}`);
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) throw new Error('No active session');
+
+            await axios.delete(`/cancel-schedule/${jobId}`, {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                }
+            });
             fetchJobs();
+            showToast('success', 'Job cancelled successfully');
         } catch (error) {
             console.error('Failed to cancel job:', error);
+            showToast('error', 'Failed to cancel job');
             throw error;
         }
     }, [fetchJobs]);

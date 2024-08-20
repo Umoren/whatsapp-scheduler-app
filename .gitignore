@@ -58,3 +58,6 @@ typings/
 .wwebjs_auth/*
 .wwebjs_cache/*
 wwebjs_auth/*
+
+.DS_STORE
+DS_STORE

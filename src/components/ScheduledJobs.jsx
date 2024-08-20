@@ -78,8 +78,8 @@ function ScheduledJobs() {
 
     return (
         <>
-            <TableContainer component={Paper}>
-                <Table>
+            <TableContainer component={Paper} sx={{ boxShadow: 'none', width: '100%' }}>
+                <Table sx={{ minWidth: 650 }}>
                     <TableHead>
                         <TableRow>
                             <TableCell>Job ID</TableCell>
@@ -93,13 +93,22 @@ function ScheduledJobs() {
                     <TableBody>
                         {jobs.map((job) => (
                             <TableRow key={job.id}>
-                                <TableCell>{job.id}</TableCell>
+                                <TableCell sx={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {job.id}
+                                </TableCell>
                                 <TableCell>{job.recipient_name}</TableCell>
-                                <TableCell>{job.message}</TableCell>
+                                <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {job.message}
+                                </TableCell>
                                 <TableCell>{new Date(job.next_run_at).toLocaleString()}</TableCell>
                                 <TableCell>{job.cron_expression}</TableCell>
                                 <TableCell>
-                                    <Button variant="contained" color="secondary" onClick={() => handleCancelClick(job)}>
+                                    <Button
+                                        variant="outlined"
+                                        color="secondary"
+                                        onClick={() => handleCancelClick(job)}
+                                        sx={{ minWidth: 'auto', padding: '6px 12px' }}
+                                    >
                                         Delete
                                     </Button>
                                 </TableCell>
@@ -124,7 +133,7 @@ function ScheduledJobs() {
                     <Button onClick={handleCloseDialog} color="primary">
                         Cancel
                     </Button>
-                    <Button onClick={handleConfirmDelete} color="secondary" autoFocus>
+                    <Button onClick={handleConfirmDelete} color="error" autoFocus>
                         Delete
                     </Button>
                 </DialogActions>
