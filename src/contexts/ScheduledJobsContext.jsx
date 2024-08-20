@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useCallback } from 'react';
-import axios from '../components/utils/axiosConfig';
+import api from '../components/utils/axiosConfig';
 import { supabaseClient } from '../components/utils/supabaseClientConfig';
 import { showToast } from '../components/toast';
 
@@ -17,7 +17,7 @@ export const ScheduledJobsProvider = ({ children }) => {
                 return;
             }
 
-            const response = await axios.get('/scheduled-jobs', {
+            const response = await api.get('/scheduled-jobs', {
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`
                 }
@@ -37,7 +37,7 @@ export const ScheduledJobsProvider = ({ children }) => {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) throw new Error('No active session');
 
-            const response = await axios.post('/schedule-message', jobData, {
+            const response = await api.post('/schedule-message', jobData, {
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`
                 }
@@ -57,7 +57,7 @@ export const ScheduledJobsProvider = ({ children }) => {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) throw new Error('No active session');
 
-            await axios.delete(`/cancel-schedule/${jobId}`, {
+            await api.delete(`/cancel-schedule/${jobId}`, {
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`
                 }

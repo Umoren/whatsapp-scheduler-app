@@ -29,7 +29,7 @@ import ListAltIcon from '@mui/icons-material/ListAlt';
 import WifiIcon from '@mui/icons-material/Wifi';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 import CloudOffIcon from '@mui/icons-material/CloudOff';
-
+import api from './utils/axiosConfig';
 import { showToast } from './toast';
 import { supabaseClient } from './utils/supabaseClientConfig';
 import Login from './Login';
@@ -140,16 +140,29 @@ function AppContent() {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) return;
 
-            const response = await fetch('/auth-status', {
+            const response = await api.get('/auth-status', {
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`
                 }
             });
-            const data = await response.json();
+            const data = await response.data;
             setIsWhatsAppAuthenticated(data.authenticated);
             setIsClientReady(data.clientReady);
         } catch (error) {
             console.error('Error checking WhatsApp auth status:', error);
+            if (error.response) {
+                // The request was made and the server responded with a status code
+                // that falls out of the range of 2xx
+                console.error('Response data:', error.response.data);
+                console.error('Response status:', error.response.status);
+                console.error('Response headers:', error.response.headers);
+            } else if (error.request) {
+                // The request was made but no response was received
+                console.error('No response received:', error.request);
+            } else {
+                // Something happened in setting up the request that triggered an Error
+                console.error('Error setting up request:', error.message);
+            }
             showToast('error', 'Failed to check WhatsApp authentication status');
         }
     };
@@ -175,28 +188,14 @@ function AppContent() {
     };
 
     async function handleSubmit(messageData, isScheduled) {
+
         const endpoint = isScheduled ? `/schedule-message` : `/send-message`;
+        const body = JSON.stringify(messageData)
 
         try {
-            const response = await fetch(`${API_URL}${endpoint}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(messageData),
-            });
-
-            const result = await response.json();
+            const response = await api.post(endpoint, body);
+            const result = response.data;
             console.log('Server response:', result);
-
-            if (!response.ok) {
-                if (result.error === 'Validation failed') {
-                    const errorMessages = result.details.map(err => err.message).join('. ');
-                    throw new Error(`Validation error: ${errorMessages}`);
-                } else if (response.status === 429) {
-                    throw new Error(result.message);
-                } else {
-                    throw new Error(result.error || `HTTP error! status: ${response.status}`);
-                }
-            }
 
             if (isScheduled) {
                 showToast('success', 'Message scheduled! It\'ll slide into their DMs right on time.');
@@ -221,7 +220,25 @@ function AppContent() {
             }
         } catch (error) {
             console.error(`Error ${isScheduled ? 'scheduling' : 'sending'} message:`, error);
-            showToast('error', error.message);
+
+            if (error.response) {
+                // The request was made and the server responded with a status code
+                // that falls out of the range of 2xx
+                if (error.response.status === 429) {
+                    showToast('error', 'Rate limit exceeded. Please try again later.');
+                } else if (error.response.data && error.response.data.error === 'Validation failed') {
+                    const errorMessages = error.response.data.details.map(err => err.message).join('. ');
+                    showToast('error', `Validation error: ${errorMessages}`);
+                } else {
+                    showToast('error', error.response.data.message || 'An error occurred while processing your request.');
+                }
+            } else if (error.request) {
+                // The request was made but no response was received
+                showToast('error', 'No response received from the server. Please check your connection.');
+            } else {
+                // Something happened in setting up the request that triggered an Error
+                showToast('error', 'An error occurred while sending the request.');
+            }
         }
     }
 
