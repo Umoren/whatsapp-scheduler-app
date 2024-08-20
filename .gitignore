@@ -61,3 +61,5 @@ wwebjs_auth/*
 
 .DS_STORE
 DS_STORE
+
+dist

@@ -188,12 +188,11 @@ function AppContent() {
     };
 
     async function handleSubmit(messageData, isScheduled) {
-
         const endpoint = isScheduled ? `/schedule-message` : `/send-message`;
-        const body = JSON.stringify(messageData)
 
         try {
-            const response = await api.post(endpoint, body);
+            // Send messageData directly, without stringifying
+            const response = await api.post(endpoint, messageData);
             const result = response.data;
             console.log('Server response:', result);
 
@@ -222,21 +221,17 @@ function AppContent() {
             console.error(`Error ${isScheduled ? 'scheduling' : 'sending'} message:`, error);
 
             if (error.response) {
-                // The request was made and the server responded with a status code
-                // that falls out of the range of 2xx
                 if (error.response.status === 429) {
                     showToast('error', 'Rate limit exceeded. Please try again later.');
                 } else if (error.response.data && error.response.data.error === 'Validation failed') {
-                    const errorMessages = error.response.data.details.map(err => err.message).join('. ');
+                    const errorMessages = error.response.data.details.join('. ');
                     showToast('error', `Validation error: ${errorMessages}`);
                 } else {
                     showToast('error', error.response.data.message || 'An error occurred while processing your request.');
                 }
             } else if (error.request) {
-                // The request was made but no response was received
                 showToast('error', 'No response received from the server. Please check your connection.');
             } else {
-                // Something happened in setting up the request that triggered an Error
                 showToast('error', 'An error occurred while sending the request.');
             }
         }
