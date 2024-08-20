@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { ThemeProvider, createTheme, styled } from '@mui/material/styles';
 import {
-    CircularProgress, Alert, CssBaseline,
+    CircularProgress, CssBaseline, Alert,
     Container,
     Typography,
     Box,
@@ -16,15 +16,23 @@ import {
     ListItem,
     ListItemIcon,
     ListItemText,
-    useMediaQuery
+    useMediaQuery,
+    AlertTitle,
+    Button,
 } from '@mui/material';
 import { checkNetworkSpeed } from '../utils/networkCheck';
-import { ScheduledJobsProvider } from '../contexts/ScheduledJobsContext';
+import { ScheduledJobsProvider, useScheduledJobs } from '../contexts/ScheduledJobsContext';
 import MenuIcon from '@mui/icons-material/Menu';
 import SendIcon from '@mui/icons-material/Send';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import ListAltIcon from '@mui/icons-material/ListAlt';
+import WifiIcon from '@mui/icons-material/Wifi';
+import WifiOffIcon from '@mui/icons-material/WifiOff';
+import CloudOffIcon from '@mui/icons-material/CloudOff';
+
 import { showToast } from './toast';
+import { supabaseClient } from './utils/supabaseClientConfig';
+import Login from './Login';
 
 const MessageForm = lazy(() => import('./MessageForm'));
 const AuthSection = lazy(() => import('./AuthSection'));
@@ -42,12 +50,21 @@ const theme = createTheme({
             default: '#f0f2f5',
         },
     },
+    components: {
+        MuiPaper: {
+            defaultProps: {
+                elevation: 0,
+            },
+        },
+    },
 });
 
 
 const StyledContainer = styled(Container)(({ theme }) => ({
     marginTop: theme.spacing(4),
     marginBottom: theme.spacing(4),
+    maxWidth: '100%!important', // Override MUI's default maxWidth
+    padding: theme.spacing(0, 4), // Add some horizontal padding
 }));
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -58,107 +75,97 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 
 const API_URL = '';
 
-function App() {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [qrCode, setQrCode] = useState('');
+function AppContent() {
     const [tabValue, setTabValue] = useState(0);
-    const [scheduledJobs, setScheduledJobs] = useState([]);
+    const { fetchJobs } = useScheduledJobs();
     const [isServerConnected, setIsServerConnected] = useState(true);
     const [isClientReady, setIsClientReady] = useState(false);
     const [networkStatus, setNetworkStatus] = useState('good');
     const [isLoading, setIsLoading] = useState(true);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+    const [session, setSession] = useState(null);
+    const [isWhatsAppAuthenticated, setIsWhatsAppAuthenticated] = useState(false);
+
+    useEffect(() => {
+        supabaseClient.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            if (session) {
+                checkWhatsAppAuthStatus();
+            }
+            setIsLoading(false);
+        });
+
+        const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+            if (session) {
+                checkWhatsAppAuthStatus();
+            } else {
+                setIsWhatsAppAuthenticated(false);
+                setIsClientReady(false);
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
 
     useEffect(() => {
         const checkServerAndFetchData = async () => {
             try {
                 const networkSpeed = await checkNetworkSpeed();
-                if (networkSpeed > 1000) {
-                    setNetworkStatus('slow');
-                } else if (networkSpeed === Infinity) {
-                    setNetworkStatus('offline');
-                } else {
-                    setNetworkStatus('good');
-                }
+                setNetworkStatus(networkSpeed > 1000 ? 'slow' : networkSpeed === Infinity ? 'offline' : 'good');
 
-                await checkAuthStatus();
-                if (isAuthenticated && isClientReady) {
-                    await fetchScheduledJobs();
+                if (isWhatsAppAuthenticated && isClientReady) {
+                    await fetchJobs();
                 }
                 setIsServerConnected(true);
             } catch (error) {
                 console.error('Server connection error:', error);
                 setIsServerConnected(false);
-                showToast('error', 'Error', 'Cannot connect to server. Please try again later.');
+                showToast('error', 'Cannot connect to server. Please try again later.');
             } finally {
                 setIsLoading(false);
             }
         };
 
         checkServerAndFetchData();
-        const interval = setInterval(checkServerAndFetchData, 10000); // Check every 10 seconds
+        const interval = setInterval(checkServerAndFetchData, 10000);
 
         return () => clearInterval(interval);
-    }, [isAuthenticated, isClientReady]);
+    }, [isWhatsAppAuthenticated, isClientReady, fetchJobs]);
 
-
-    async function checkAuthStatus() {
+    const checkWhatsAppAuthStatus = async () => {
         try {
-            const response = await fetch(`${API_URL}/auth-status`, { timeout: 5000 });
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) return;
+
+            const response = await fetch('/auth-status', {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
+                }
+            });
             const data = await response.json();
-            console.log('Auth status response:', data);
-            setIsAuthenticated(data.authenticated);
+            setIsWhatsAppAuthenticated(data.authenticated);
             setIsClientReady(data.clientReady);
-            if (data.authenticated && !data.clientReady) {
-                console.log('Client authenticated but not ready. This should be temporary.');
-            }
         } catch (error) {
-            console.error('Error checking auth status:', error);
-            setIsAuthenticated(false);
-            setIsClientReady(false);
+            console.error('Error checking WhatsApp auth status:', error);
+            showToast('error', 'Failed to check WhatsApp authentication status');
         }
-    }
+    };
 
-    async function getQRCode() {
+
+    const handleLogout = async () => {
         try {
-            const response = await fetch(`${API_URL}/qr`);
-            const data = await response.json();
-
-            if (response.status === 200 && data.qrCode) {
-                setQrCode(data.qrCode);
-                showToast('info', 'Scan this QR code with WhatsApp. It\'s like Snapchat, but for login!');
-            } else if (response.status === 200 && data.authenticated) {
-                showToast('success', 'You\'re in! Ready to slide into those DMs?');
-                setIsAuthenticated(true);
-                checkAuthStatus();
-            } else if (response.status === 202) {
-                showToast('info', data.message);
-                setTimeout(getQRCode, 3000);
-            } else {
-                throw new Error(data.error || 'Failed to get QR code');
-            }
+            await supabaseClient.auth.signOut();
+            setSession(null);
+            setIsWhatsAppAuthenticated(false);
+            showToast('success', 'Logged out successfully');
         } catch (error) {
-            console.error('Error getting QR code:', error);
-            showToast('error', 'Oops! QR code ghosted us. Wanna try again?');
-            setTimeout(getQRCode, 5000);
+            console.error('Logout error:', error);
+            showToast('error', 'Failed to log out. Please try again.');
         }
-    }
-
-    async function fetchScheduledJobs() {
-        try {
-            const response = await fetch(`${API_URL}/scheduled-jobs`, { timeout: 5000 });
-            if (response.ok) {
-                const jobs = await response.json();
-                setScheduledJobs(jobs);
-            } else {
-                throw new Error('Failed to fetch scheduled jobs');
-            }
-        } catch (error) {
-            console.error('Error fetching scheduled jobs:', error);
-            throw error;
-        }
-    }
+    };
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
@@ -193,7 +200,7 @@ function App() {
 
             if (isScheduled) {
                 showToast('success', 'Message scheduled! It\'ll slide into their DMs right on time.');
-                fetchScheduledJobs();
+                fetchJobs();
             } else {
                 const successes = result.details.filter(d => d.status === 'fulfilled').length;
                 const failures = result.details.filter(d => d.status === 'rejected').length;
@@ -231,8 +238,12 @@ function App() {
             );
         }
 
-        if (!isAuthenticated) {
-            return <AuthSection qrCode={qrCode} getQRCode={getQRCode} />;
+        if (!session) {
+            return <Login />;
+        }
+
+        if (!isWhatsAppAuthenticated) {
+            return <AuthSection onAuthenticated={() => setIsWhatsAppAuthenticated(true)} />;
         }
 
         if (!isClientReady) {
@@ -271,7 +282,6 @@ function App() {
             </List>
         </Drawer>
     );
-
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
@@ -289,32 +299,38 @@ function App() {
                     <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
                         WhatsApp Scheduler
                     </Typography>
+                    {session && <Button color="inherit" onClick={handleLogout}>Logout</Button>}
                 </Toolbar>
             </AppBar>
             {drawer}
             <StyledContainer maxWidth="md">
                 {!isServerConnected && (
-                    <Box mb={2}>
-                        <Typography color="error">Server is not connected. Some features may not work.</Typography>
-                    </Box>
+                    <Alert severity="error" icon={<CloudOffIcon />} sx={{ mb: 2 }}>
+                        <AlertTitle>Server Disconnected</AlertTitle>
+                        The server is not connected. Some features may not work properly.
+                    </Alert>
                 )}
                 {networkStatus === 'slow' && (
-                    <Box mb={2}>
-                        <Typography color="warning">Your internet connection seems slow. This may affect the app's performance.</Typography>
-                    </Box>
+                    <Alert severity="warning" icon={<WifiIcon sx={{ color: 'orange' }} />} sx={{ mb: 2 }}>
+                        <AlertTitle>Slow Connection</AlertTitle>
+                        Your internet connection seems slow. This may affect the app's performance.
+                    </Alert>
                 )}
                 {networkStatus === 'offline' && (
-                    <Box mb={2}>
-                        <Typography color="error">You appear to be offline. Please check your internet connection.</Typography>
+                    <Alert severity="error" icon={<WifiOffIcon />} sx={{ mb: 2 }}>
+                        <AlertTitle>Offline</AlertTitle>
+                        You appear to be offline. Please check your internet connection.
+                    </Alert>
+                )}
+                {isWhatsAppAuthenticated && (
+                    <Box sx={{ borderBottom: 1, borderColor: 'divider', display: { xs: 'none', sm: 'block' } }}>
+                        <Tabs value={tabValue} onChange={handleTabChange} aria-label="basic tabs example">
+                            <Tab label="Send Message" icon={<SendIcon />} />
+                            <Tab label="Schedule Message" icon={<ScheduleIcon />} />
+                            <Tab label="Scheduled Jobs" icon={<ListAltIcon />} />
+                        </Tabs>
                     </Box>
                 )}
-                <Box sx={{ borderBottom: 1, borderColor: 'divider', display: { xs: 'none', sm: 'block' } }}>
-                    <Tabs value={tabValue} onChange={handleTabChange} aria-label="basic tabs example">
-                        <Tab label="Send Message" icon={<SendIcon />} />
-                        <Tab label="Schedule Message" icon={<ScheduleIcon />} />
-                        <Tab label="Scheduled Jobs" icon={<ListAltIcon />} />
-                    </Tabs>
-                </Box>
                 <Suspense fallback={<CircularProgress />}>
                     {renderContent()}
                 </Suspense>
@@ -322,5 +338,14 @@ function App() {
         </ThemeProvider>
     );
 }
+
+function App() {
+    return (
+        <ScheduledJobsProvider>
+            <AppContent />
+        </ScheduledJobsProvider>
+    );
+}
+
 
 export default App;

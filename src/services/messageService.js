@@ -180,6 +180,7 @@ async function scheduleMessage(cronExpression, recipientType, recipientName, mes
 
         const jobData = {
             id,
+            user_id: userId,
             cron_expression: normalizedCronExpression,
             recipient_type: recipientType,
             recipient_name: encrypt(recipientName),
@@ -247,9 +248,13 @@ async function cancelScheduledMessage(id) {
 }
 
 
-async function getScheduledJobs() {
+async function getScheduledJobs(userId) {
     try {
-        const { data, error } = await supabase.from('scheduled_jobs').select('*');
+        const { data, error } = await supabase
+            .from('scheduled_jobs')
+            .select('*')
+            .eq('user_id', userId)
+            .not('status', 'eq', 'cancelled');
 
         if (error) {
             logger.error('Supabase error:', error);
@@ -257,6 +262,7 @@ async function getScheduledJobs() {
         }
 
         logger.info('Raw data from Supabase:', { data });
+        logger.info(`Retrieved ${data.length} jobs for user ${userId}`);
 
         if (!data || data.length === 0) {
             logger.info('No scheduled jobs found');

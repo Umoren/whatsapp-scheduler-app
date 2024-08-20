@@ -45,26 +45,25 @@ const server = app.listen(config.PORT, '0.0.0.0', () => {
     console.log(`Server is running on port ${config.PORT}`);
 });
 
-process.on('SIGTERM', () => {
-    console.info('SIGTERM signal received.');
-    console.log('Closing http server.');
-    server.close(() => {
+async function shutdownServer() {
+    console.log('Shutting down server...');
+    server.close(async () => {
         console.log('Http server closed.');
-        gracefulShutdown().then(() => {
-            console.log('WhatsApp client shut down.');
-            process.exit(0);
-        }).catch(console.error);
+        try {
+            await gracefulShutdown();
+            console.log('WhatsApp client shut down successfully.');
+        } catch (error) {
+            console.error('Error during WhatsApp client shutdown:', error);
+        }
+        process.exit(0);
     });
-});
 
-process.on('SIGINT', () => {
-    console.info('SIGINT signal received.');
-    console.log('Closing http server.');
-    server.close(() => {
-        console.log('Http server closed.');
-        gracefulShutdown().then(() => {
-            console.log('WhatsApp client shut down.');
-            process.exit(0);
-        }).catch(console.error);
-    });
-});
+    // Force close after 10 seconds
+    setTimeout(() => {
+        console.error('Could not close connections in time, forcefully shutting down');
+        process.exit(1);
+    }, 10000);
+}
+
+process.on('SIGTERM', shutdownServer);
+process.on('SIGINT', shutdownServer);

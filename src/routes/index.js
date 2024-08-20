@@ -12,6 +12,7 @@ const messageLimiter = require('../middlewares/rateLimiter');
 const { MessageSchema } = require('../utils/schema');
 const { BadRequestError, AppError } = require('../utils/errors');
 const { createModuleLogger } = require('../middlewares/logger');
+const authMiddleware = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 const logger = createModuleLogger(path.basename(__filename));
@@ -94,67 +95,66 @@ router.post('/send-message', messageLimiter, async (req, res, next) => {
     }
 });
 
-
-router.post('/schedule-message', messageLimiter, async (req, res, next) => {
-    logger.info('Schedule message route accessed');
+router.post('/schedule-message', authMiddleware, messageLimiter, async (req, res, next) => {
+    logger.info('Schedule message route accessed', { userId: req.user.id });
     try {
         await ensureInitialized();
         const validatedData = MessageSchema.parse(req.body);
         const { cronExpression, recipientType, recipientName, message, imageUrl } = validatedData;
 
         if (!cronExpression) {
-            logger.warn('Cron expression missing');
+            logger.warn('Cron expression missing', { userId: req.user.id });
             throw new BadRequestError('Cron expression is required for scheduling');
         }
 
-        logger.info('Scheduling message', { recipientType, recipientName });
-        const result = await scheduleMessage(cronExpression, recipientType, recipientName, message, imageUrl);
-        logger.info('Message scheduled successfully', { id: result.id });
+        logger.info('Scheduling message', { recipientType, recipientName, userId: req.user.id });
+        const result = await scheduleMessage(cronExpression, recipientType, recipientName, message, imageUrl, req.user.id);
+        logger.info('Message scheduled successfully', { id: result.id, userId: req.user.id });
         res.status(200).json({ message: 'Message scheduled successfully', ...result });
     } catch (error) {
         if (error.errors) {
             // Zod validation error
-            logger.warn('Validation error', { errors: error.errors });
+            logger.warn('Validation error', { errors: error.errors, userId: req.user.id });
             res.status(400).json({ error: 'Validation failed', details: error.errors });
         } else {
-            logger.error('Failed to schedule message', { error: error.message, stack: error.stack });
+            logger.error('Failed to schedule message', { error: error.message, stack: error.stack, userId: req.user.id });
             next(new AppError('Failed to schedule message: ' + error.message, 500));
         }
     }
 });
 
-router.delete('/cancel-schedule/:id', async (req, res, next) => {
+router.delete('/cancel-schedule/:id', authMiddleware, async (req, res, next) => {
     const { id } = req.params;
-    logger.info('Delete scheduled message route accessed', { id });
+    logger.info('Delete scheduled message route accessed', { id, userId: req.user.id });
     try {
         await ensureInitialized();
-        const result = await cancelScheduledMessage(id);
+        const result = await cancelScheduledMessage(id, req.user.id);
         if (result) {
-            logger.info('Scheduled message deleted successfully', { id });
+            logger.info('Scheduled message deleted successfully', { id, userId: req.user.id });
             res.status(200).send('Scheduled message deleted successfully');
         } else {
-            logger.warn('Scheduled message not found', { id });
-            throw new NotFoundError('Scheduled message not found');
+            logger.warn('Scheduled message not found or unauthorized', { id, userId: req.user.id });
+            throw new NotFoundError('Scheduled message not found or unauthorized');
         }
     } catch (error) {
         if (error instanceof NotFoundError) {
             res.status(404).json({ error: error.message });
         } else {
-            logger.error('Failed to delete scheduled message', { error, id });
+            logger.error('Failed to delete scheduled message', { error, id, userId: req.user.id });
             next(new AppError('Failed to delete scheduled message', 500));
         }
     }
 });
 
-router.get('/scheduled-jobs', async (req, res, next) => {
-    logger.info('Get scheduled jobs route accessed');
+router.get('/scheduled-jobs', authMiddleware, async (req, res, next) => {
+    logger.info('Get scheduled jobs route accessed', { userId: req.user.id });
     try {
         await ensureInitialized();
-        const jobs = await getScheduledJobs();
-        logger.info(`Returning ${jobs.length} jobs`);
+        const jobs = await getScheduledJobs(req.user.id);
+        logger.info(`Returning ${jobs.length} jobs`, { userId: req.user.id });
         res.status(200).json(jobs);
     } catch (error) {
-        logger.error('Failed to get scheduled jobs', { error });
+        logger.error('Failed to get scheduled jobs', { error, userId: req.user.id });
         next(new AppError('Failed to get scheduled jobs', 500));
     }
 });
