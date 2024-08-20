@@ -53,6 +53,7 @@ typings/
 
 # dotenv environment variables file
 .env
+.env*
 
 # WhatsApp Web session data
 .wwebjs_auth/*
@@ -61,3 +62,5 @@ wwebjs_auth/*
 
 .DS_STORE
 DS_STORE
+
+dist

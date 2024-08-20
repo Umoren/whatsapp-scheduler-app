@@ -2,7 +2,11 @@ import axios from 'axios';
 import { supabaseClient } from './supabaseClientConfig';
 import { showToast } from '../toast';
 
-axios.interceptors.response.use(
+const instance = axios.create({
+    baseURL: '/api'
+});
+
+instance.interceptors.response.use(
     (response) => response,
     async (error) => {
         if (error.response && error.response.status === 401) {
@@ -14,4 +18,4 @@ axios.interceptors.response.use(
     }
 );
 
-export default axios;
+export default instance;

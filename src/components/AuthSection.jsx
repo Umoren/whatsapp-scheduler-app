@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Box, Typography, Button, Paper, Container, CircularProgress } from '@mui/material';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import { showToast } from './toast';
+import api from './utils/axiosConfig';
 
 function AuthSection({ onAuthenticated }) {
     const [qrCode, setQrCode] = useState('');
@@ -10,8 +11,8 @@ function AuthSection({ onAuthenticated }) {
     const getQRCode = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('/qr');
-            const data = await response.json();
+            const response = await api.get('/qr');
+            const data = await response.data;
 
             if (response.status === 200 && data.qrCode) {
                 setQrCode(data.qrCode);
