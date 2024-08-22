@@ -128,6 +128,9 @@ function ScheduledJobs() {
                     <DialogContentText id="alert-dialog-description">
                         Are you sure you want to delete this scheduled message? This action is permanent and cannot be undone.
                     </DialogContentText>
+                    <DialogContentText sx={{ mt: 2, color: 'text.secondary' }}>
+                        Note: This will only remove the scheduled job. If the message has already been sent, it will not be deleted from WhatsApp.
+                    </DialogContentText>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseDialog} color="primary">

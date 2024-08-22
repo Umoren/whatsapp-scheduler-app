@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Button, TextField, Box, MenuItem, CircularProgress, IconButton } from '@mui/material';
+import { Button, TextField, Box, MenuItem, CircularProgress, IconButton, Tooltip } from '@mui/material';
 import ContentPasteIcon from '@mui/icons-material/ContentPaste';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import Cron from 'react-cron-generator';
 import { trackEvent } from '../utils/analytics';
 import { useScheduledJobs } from '../contexts/ScheduledJobsContext';
@@ -86,6 +87,13 @@ function MessageForm({ onSubmit, isScheduled = false, onError }) {
                 onChange={handleInputChange}
                 fullWidth
                 margin="normal"
+                InputProps={{
+                    endAdornment: (
+                        <Tooltip title="For groups, you must enter the exact group name. For individuals, enter the full phone number including country code.">
+                            <HelpOutlineIcon color="action" sx={{ ml: 1 }} />
+                        </Tooltip>
+                    ),
+                }}
             >
                 <MenuItem value="group">Group</MenuItem>
                 <MenuItem value="individual">Individual</MenuItem>
@@ -99,7 +107,12 @@ function MessageForm({ onSubmit, isScheduled = false, onError }) {
                     fullWidth
                     margin="normal"
                     error={!!errors.recipientName}
-                    helperText={errors.recipientName}
+                    helperText={
+                        errors.recipientName ||
+                        (formData.recipientType === 'group'
+                            ? "Enter the exact group name as it appears in WhatsApp."
+                            : "Enter the full phone number including country code.")
+                    }
                 />
                 <IconButton onClick={handlePaste} sx={{ ml: 1 }}>
                     <ContentPasteIcon />
