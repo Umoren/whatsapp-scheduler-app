@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Box, Typography, Button, Paper, Container, CircularProgress } from '@mui/material';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import { showToast } from './toast';
-import api from './utils/axiosConfig';
+import api from '../utils/axiosConfig';
 
 function AuthSection({ onAuthenticated }) {
     const [qrCode, setQrCode] = useState('');

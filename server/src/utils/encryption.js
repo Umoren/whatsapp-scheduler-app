@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: "../.env" });
 const crypto = require('crypto');
 
 const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'base64');
