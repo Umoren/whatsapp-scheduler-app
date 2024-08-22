@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { supabaseClient } from './supabaseClientConfig';
-import { showToast } from '../toast';
+import { showToast } from '../components/toast';
 
 const instance = axios.create({
     baseURL: '/api'

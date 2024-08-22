@@ -1,5 +1,5 @@
 import { toast } from 'react-hot-toast';
-import CustomToast from '../components/CustomToast';
+import CustomToast from './CustomToast';
 
 const getTitle = (type) => {
     switch (type) {

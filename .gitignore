@@ -91,3 +91,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+.wwebjs_auth
+.wwebjs_cache
+wwebjs_auth
+

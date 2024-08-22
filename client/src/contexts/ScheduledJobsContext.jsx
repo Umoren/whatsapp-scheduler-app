@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useCallback } from 'react';
-import api from '../components/utils/axiosConfig';
-import { supabaseClient } from '../components/utils/supabaseClientConfig';
+import api from '../utils/axiosConfig';
+import { supabaseClient } from '../utils/supabaseClientConfig';
 import { showToast } from '../components/toast';
 
 const ScheduledJobsContext = createContext();

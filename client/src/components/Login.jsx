@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Typography, Box, Container, Paper } from '@mui/material';
 import { Google as GoogleIcon } from '@mui/icons-material';
-import { supabaseClient } from './utils/supabaseClientConfig';
+import { supabaseClient } from '../utils/supabaseClientConfig';
 import { showToast } from './toast';
 
 function Login() {
