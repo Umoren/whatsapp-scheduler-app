@@ -29,9 +29,9 @@ import ListAltIcon from '@mui/icons-material/ListAlt';
 import WifiIcon from '@mui/icons-material/Wifi';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 import CloudOffIcon from '@mui/icons-material/CloudOff';
-import api from './utils/axiosConfig';
+import api from '../utils/axiosConfig';
 import { showToast } from './toast';
-import { supabaseClient } from './utils/supabaseClientConfig';
+import { supabaseClient } from '../utils/supabaseClientConfig';
 import Login from './Login';
 
 const MessageForm = lazy(() => import('./MessageForm'));
