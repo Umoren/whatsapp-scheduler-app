@@ -40,7 +40,7 @@ app.use('/api', routes);
 
 // Serve static files and handle client-side routing
 if (process.env.NODE_ENV === 'production') {
-    const clientDistPath = path.join(__dirname, '..', '..', 'client', 'dist');
+    const clientDistPath = path.join(__dirname, 'client', 'dist');
     app.use(staticFileLimiter, express.static(clientDistPath));
     app.get('*', catchAllLimiter, (req, res) => {
         res.sendFile(path.join(clientDistPath, 'index.html'));

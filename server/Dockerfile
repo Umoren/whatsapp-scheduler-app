@@ -2,17 +2,12 @@ FROM node:20
 
 WORKDIR /app
 
-# Copy package.json and install dependencies
+# Copy server package.json and install dependencies
 COPY package*.json ./
 RUN npm install
 
 # Copy the rest of the server code
 COPY . .
-
-# Copy client files
-COPY client/package*.json ./client/
-RUN cd client && npm install
-RUN cd client && npm run build
 
 # Install system dependencies for Puppeteer
 RUN apt-get update && apt-get install -y \

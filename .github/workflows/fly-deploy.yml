@@ -10,9 +10,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Build client
+        run: |
+          cd ../client
+          npm install
+          npm run build
+          mkdir -p ../server/client/dist
+          cp -r dist/* ../server/client/dist/
       - name: Deploy to Fly
         run: |
           cd server
-          flyctl deploy --remote-only --app whatsapp-scheduler
+          flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
