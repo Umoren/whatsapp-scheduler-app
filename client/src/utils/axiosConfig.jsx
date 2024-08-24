@@ -3,7 +3,7 @@ import { supabaseClient } from './supabaseClientConfig';
 import { showToast } from '../components/toast';
 
 const instance = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'https://whatsapp-scheduler.fly.dev/api'
+    baseURL: 'https://whatsapp-scheduler.fly.dev/api'
 });
 
 instance.interceptors.request.use(
