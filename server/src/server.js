@@ -1,4 +1,5 @@
 require('dotenv').config({ path: "../.env" });
+require("./instrument");
 const express = require('express');
 const path = require('path');
 const bodyParser = require('body-parser');
