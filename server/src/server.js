@@ -65,6 +65,12 @@ app.use(errorHandler);
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);
     console.error('Stack trace:', err.stack);
+    console.error('Request details:', {
+        method: req.method,
+        url: req.url,
+        headers: req.headers,
+        body: req.body
+    });
     res.status(500).json({ error: 'An unexpected error occurred', details: err.message });
 });
 

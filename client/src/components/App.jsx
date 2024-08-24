@@ -112,23 +112,22 @@ function AppContent() {
     useEffect(() => {
         const handleAuth = async () => {
             const hash = window.location.hash;
-            console.log("Hash:", hash); // Debug log
+            console.log("Full URL:", window.location.href);
+            console.log("Hash:", hash);
 
             if (hash) {
-                const { access_token, expires_in } = Object.fromEntries(
-                    hash.substring(1).split('&').map(param => param.split('='))
-                );
+                const params = new URLSearchParams(hash.substring(1));
+                const access_token = params.get('access_token');
+                console.log("Parsed access token:", access_token);
 
                 if (access_token) {
-                    console.log("Access token found"); // Debug log
-                    const { data: { user }, error } = await supabaseClient.auth.getUser(access_token);
-
-                    if (error) {
-                        console.error("Error getting user:", error); // Debug log
-                    } else {
-                        console.log("User authenticated:", user); // Debug log
+                    try {
+                        const { data: { user }, error } = await supabaseClient.auth.getUser(access_token);
+                        console.log("Supabase getUser response:", { user, error });
+                        if (error) throw error;
                         setSession({ user, access_token });
-                        // Redirect or update app state here
+                    } catch (error) {
+                        console.error("Error in authentication flow:", error);
                     }
                 }
             }
