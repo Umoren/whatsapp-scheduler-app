@@ -71,7 +71,10 @@ app.use((err, req, res, next) => {
         headers: req.headers,
         body: req.body
     });
-    res.status(500).json({ error: 'An unexpected error occurred', details: err.message });
+    res.status(500).json({
+        error: 'An unexpected error occurred',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
 });
 
 // App initialization
