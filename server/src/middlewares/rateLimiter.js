@@ -10,9 +10,9 @@ const messageLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => {
-        // Use the user ID set by authMiddleware, fallback to IP if not authenticated
         return req.user ? req.user.id : req.ip;
     },
+    trustProxy: true
 });
 
 module.exports = messageLimiter;
