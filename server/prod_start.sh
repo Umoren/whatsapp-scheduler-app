@@ -26,4 +26,4 @@ echo "Session symlink target:"
 readlink -f "${SESSION_DIR}"
 
 # Start the server
-node src/server.js
+NODE_ENV=production node src/server.js
