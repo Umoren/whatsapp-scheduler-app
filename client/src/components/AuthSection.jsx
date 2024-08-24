@@ -20,6 +20,9 @@ function AuthSection({ onAuthenticated }) {
             } else if (response.status === 200 && data.authenticated) {
                 showToast('success', 'WhatsApp authenticated successfully');
                 onAuthenticated();
+            } else if (response.status === 202) {
+                // QR code is still loading, retry after a short delay
+                setTimeout(getQRCode, 2000);
             } else {
                 throw new Error(data.error || 'Failed to get QR code');
             }
