@@ -1,9 +1,4 @@
-# fly.toml app configuration file generated for server-twilight-silence-7184 on 2024-08-24T01:17:57+01:00
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
-app = 'server-twilight-silence-7184'
+app = 'whatsapp-scheduler'
 primary_region = 'ams'
 
 [build]
@@ -16,11 +11,11 @@ auto_start_machines = true
 min_machines_running = 0
 processes = ['app']
 
-[mounts]
-source = "whatsapp_auth"
-destination = "/app/.wwebjs_auth"
-
 [[vm]]
 memory = '1gb'
 cpu_kind = 'shared'
 cpus = 1
+
+[mounts]
+source = "whatsapp_auth"
+destination = "/app/.wwebjs_auth"

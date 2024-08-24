@@ -51,8 +51,8 @@ async function initializeApp() {
 
 initializeApp();
 
-const server = app.listen(config.PORT, '0.0.0.0', () => {
-    console.log(`Server is running on port ${config.PORT}`);
+const server = app.listen(config.PORT, config.HOST, () => {
+    console.log(`Server is running on ${config.HOST}:${config.PORT}`);
 });
 
 async function shutdownServer() {
