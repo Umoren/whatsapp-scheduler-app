@@ -1,6 +1,6 @@
 #!/bin/bash
 
-AUTH_DIR="/app/.wwebjs_auth"
+AUTH_DIR="/app/server/.wwebjs_auth"
 PERSISTENT_DIR="${AUTH_DIR}/persistent_session"
 SESSION_DIR="${AUTH_DIR}/session"
 
