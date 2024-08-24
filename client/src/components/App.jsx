@@ -135,7 +135,21 @@ function AppContent() {
 
         handleAuth();
     }, []);
+    useEffect(() => {
+        let authCheckInterval;
 
+        // Set up interval for subsequent checks
+        if (session && (!isWhatsAppAuthenticated || !isClientReady)) {
+            authCheckInterval = setInterval(checkWhatsAppAuthStatus, 5000);
+        }
+
+        // Cleanup function
+        return () => {
+            if (authCheckInterval) {
+                clearInterval(authCheckInterval);
+            }
+        };
+    }, [session, isWhatsAppAuthenticated, isClientReady]);
 
     useEffect(() => {
         const checkServerAndFetchData = async () => {
@@ -162,46 +176,24 @@ function AppContent() {
         return () => clearInterval(interval);
     }, [isWhatsAppAuthenticated, isClientReady, fetchJobs]);
 
-    useEffect(() => {
-        let authCheckInterval;
+    const checkWhatsAppAuthStatus = async () => {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) return;
 
-        const checkWhatsAppAuthStatus = async () => {
-            try {
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                if (!session) return;
-
-                const response = await api.get('/auth-status', {
-                    headers: {
-                        'Authorization': `Bearer ${session.access_token}`
-                    }
-                });
-                const data = await response.data;
-                setIsWhatsAppAuthenticated(data.authenticated);
-                setIsClientReady(data.clientReady);
-
-                // If authenticated and client is ready, stop checking
-                if (data.authenticated && data.clientReady) {
-                    clearInterval(authCheckInterval);
+            const response = await api.get('/auth-status', {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`
                 }
-            } catch (error) {
-                console.error('Error checking WhatsApp auth status:', error);
-                showToast('error', 'Failed to check WhatsApp authentication status');
-            }
-        };
-
-        // Initial check
-        checkWhatsAppAuthStatus();
-
-        // Set up interval for subsequent checks
-        authCheckInterval = setInterval(checkWhatsAppAuthStatus, 5000);
-
-        // Cleanup function
-        return () => {
-            if (authCheckInterval) {
-                clearInterval(authCheckInterval);
-            }
-        };
-    }, []);
+            });
+            const data = await response.data;
+            setIsWhatsAppAuthenticated(data.authenticated);
+            setIsClientReady(data.clientReady);
+        } catch (error) {
+            console.error('Error checking WhatsApp auth status:', error);
+            showToast('error', 'Failed to check WhatsApp authentication status');
+        }
+    };
 
 
     const handleLogout = async () => {
