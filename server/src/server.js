@@ -14,6 +14,8 @@ const { loggingMiddleware } = require('./middlewares/logger');
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(cors({
     origin: ['https://whatsapp-scheduler-client.vercel.app', 'https://whatsapp-scheduler.fly.dev'],
@@ -24,15 +26,24 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(loggingMiddleware);
 
-// Rate limiters
 const staticFileLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => {
+        return req.ip;
+    },
 });
 
 const catchAllLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 50
+    max: 50,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) => {
+        return req.ip;
+    },
 });
 
 // API routes
