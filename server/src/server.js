@@ -12,6 +12,12 @@ const { loggingMiddleware } = require('./middlewares/logger');
 
 const app = express();
 
+app.use(cors({
+    origin: 'https://whatsapp-scheduler-client.vercel.app',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../../client/dist')));
@@ -23,13 +29,13 @@ app.use('/api', routes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
-    app.use(express.static(path.join(__dirname, '../../client/dist')));
+    const clientDistPath = path.join(__dirname, '..', '..', 'client', 'dist');
+    app.use(express.static(clientDistPath));
 
     app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, '../../client/dist', 'index.html'));
+        res.sendFile(path.join(clientDistPath, 'index.html'));
     });
 }
-
 app.use(errorHandler);
 
 app.use((err, req, res, next) => {
