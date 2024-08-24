@@ -109,6 +109,34 @@ function AppContent() {
         return () => subscription.unsubscribe();
     }, []);
 
+    useEffect(() => {
+        const handleAuth = async () => {
+            const hash = window.location.hash;
+            console.log("Hash:", hash); // Debug log
+
+            if (hash) {
+                const { access_token, expires_in } = Object.fromEntries(
+                    hash.substring(1).split('&').map(param => param.split('='))
+                );
+
+                if (access_token) {
+                    console.log("Access token found"); // Debug log
+                    const { data: { user }, error } = await supabaseClient.auth.getUser(access_token);
+
+                    if (error) {
+                        console.error("Error getting user:", error); // Debug log
+                    } else {
+                        console.log("User authenticated:", user); // Debug log
+                        setSession({ user, access_token });
+                        // Redirect or update app state here
+                    }
+                }
+            }
+        };
+
+        handleAuth();
+    }, []);
+
 
     useEffect(() => {
         const checkServerAndFetchData = async () => {

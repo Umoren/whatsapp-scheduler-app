@@ -161,7 +161,7 @@ router.get('/scheduled-jobs', authMiddleware, async (req, res, next) => {
 
 
 router.get('/healthz', (req, res) => {
-    res.status(200).send('OK');
+    res.status(200).json({ status: 'OK', message: 'Server is running' });
 });
 
 module.exports = router;

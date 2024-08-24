@@ -20,8 +20,10 @@ app.set('trust proxy', 1);
 app.use(cors({
     origin: ['https://whatsapp-scheduler-client.vercel.app', 'https://whatsapp-scheduler.fly.dev'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
 }));
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(loggingMiddleware);
@@ -62,7 +64,8 @@ if (process.env.NODE_ENV === 'production') {
 app.use(errorHandler);
 app.use((err, req, res, next) => {
     console.error('Unhandled error:', err);
-    res.status(500).send('An unexpected error occurred');
+    console.error('Stack trace:', err.stack);
+    res.status(500).json({ error: 'An unexpected error occurred', details: err.message });
 });
 
 // App initialization
