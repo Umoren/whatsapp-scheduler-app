@@ -12,7 +12,7 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Build client
         run: |
-          cd ../client
+          cd client
           npm install
           npm run build
           mkdir -p ../server/client/dist
