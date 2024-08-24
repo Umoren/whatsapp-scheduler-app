@@ -16,7 +16,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: 'https://whatsapp-scheduler-client.vercel.app',
+    origin: ['https://whatsapp-scheduler-client.vercel.app', 'https://whatsapp-scheduler.fly.dev'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -42,7 +42,7 @@ app.use('/api', routes);
 if (process.env.NODE_ENV === 'production') {
     const clientDistPath = path.join(__dirname, '..', '..', 'client', 'dist');
     app.use(staticFileLimiter, express.static(clientDistPath));
-    app.get('*/', catchAllLimiter, (req, res) => {
+    app.get('*', catchAllLimiter, (req, res) => {
         res.sendFile(path.join(clientDistPath, 'index.html'));
     });
 }
