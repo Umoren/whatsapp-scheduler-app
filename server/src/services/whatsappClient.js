@@ -29,26 +29,21 @@ function createClient() {
         }),
         puppeteer: {
             args: [
-                "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage",
-                "--disable-accelerated-2d-canvas", "--no-first-run", "--no-zygote",
-                "--single-process", "--disable-gpu"
+                "--no-sandbox", "--disable-setuid-sandbox", "--headless=new", "--single-process"
             ],
-            headless: true
+            headless: false
         },
     });
 }
 
 function setupClientListeners(client) {
     client.on('qr', async (qr) => {
-        if (clientState.isAuthenticated) {
-            logger.warn('QR code generated despite client being authenticated');
-            return;
-        }
         logger.info('QR RECEIVED');
         try {
             qrImageData = await qrcode.toDataURL(qr);
             clientState.isLoading = false;
             clientState.isAuthenticated = false;
+            logger.info('QR code generated successfully');
         } catch (error) {
             logger.error('Failed to generate QR code:', error);
         }
@@ -72,7 +67,7 @@ function setupClientListeners(client) {
     });
 
     client.on('auth_failure', (msg) => {
-        console.error('Authentication failure:', msg);
+        logger.error('Authentication failure:', msg);
         clientState.isAuthenticated = false;
     });
 
@@ -88,8 +83,13 @@ async function initializeClient() {
     const start = Date.now();
     logger.info('Starting client initialization');
 
+    if (client && clientState.isInitialized && clientState.isAuthenticated) {
+        logger.info('Client already initialized and authenticated, skipping initialization');
+        return client;
+    }
+
     if (client) {
-        logger.info('Client already exists, destroying old client...');
+        logger.info('Destroying existing client before reinitializing');
         await client.destroy();
     }
 
@@ -121,7 +121,6 @@ async function initializeClient() {
     logger.info(`Total client initialization time: ${totalDuration}ms`);
     return client;
 }
-
 
 function getQRImageData() {
     return qrImageData;
