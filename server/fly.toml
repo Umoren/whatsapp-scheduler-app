@@ -9,7 +9,8 @@ internal_port = 3000
 force_https = true
 auto_stop_machines = "off"
 auto_start_machines = true
-min_machines_running = 0
+min_machines_running = 1
+max_machines_running = 1
 processes = ['app']
 
 [[vm]]
@@ -22,9 +23,4 @@ source = "whatsapp_auth"
 destination = "/app/.wwebjs_auth"
 
 [deploy]
-strategy = "immediate"
-max_unavailable = 1
-
-[[services]]
-min_machines_running = 1
-max_machines_running = 1
+strategy = "rolling"
