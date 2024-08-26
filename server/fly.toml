@@ -4,8 +4,8 @@ primary_region = 'ams'
 [build]
 dockerfile = "Dockerfile"
 
-[processes]
-app = "./prod_start.sh" # Specify the start command
+[env]
+PORT = "3000"
 
 [http_service]
 internal_port = 3000
@@ -13,28 +13,43 @@ force_https = true
 auto_stop_machines = "off"
 auto_start_machines = true
 min_machines_running = 1
+processes = ["app"]
 
 [[http_service.checks]]
 interval = "15s"
 timeout = "2s"
 grace_period = "5s"
 method = "GET"
-path = "/health"    # Health check endpoint
+path = "/health"
 protocol = "http"
 
+[[services]]
+protocol = "tcp"
+internal_port = 3000
+processes = ["app"]
+
+[[services.ports]]
+port = 80
+handlers = ["http"]
+force_https = true
+
+[[services.ports]]
+port = 443
+handlers = ["tls", "http"]
+
+[[services.tcp_checks]]
+interval = "15s"
+timeout = "2s"
+grace_period = "1s"
+
 [[vm]]
-memory = '1gb'
-cpu_kind = 'shared'
+cpu_kind = "shared"
 cpus = 1
+memory_mb = 1024
 
 [mounts]
 source = "whatsapp_auth"
 destination = "/app/.wwebjs_auth"
 
 [deploy]
-strategy = "rolling" # Change to rolling for smoother deployments
-max_unavailable = 1
-
-[[services]]
-min_machines_running = 1
-max_machines_running = 1
+strategy = "immediate"
