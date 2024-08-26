@@ -25,5 +25,10 @@ ls -la "${PERSISTENT_DIR}"
 echo "Session symlink target:"
 readlink -f "${SESSION_DIR}"
 
+# Set environment variables
+export NODE_ENV=production
+export PORT=3000
+export HOST=0.0.0.0
+
 # Start the server
-NODE_ENV=production node src/server.js
+node src/server.js

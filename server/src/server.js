@@ -14,6 +14,9 @@ const { loggingMiddleware } = require('./middlewares/logger');
 
 const app = express();
 
+const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0';
+
 app.set('trust proxy', 1);
 
 // Middleware
@@ -93,7 +96,7 @@ async function initializeApp() {
 // Server startup
 const startServer = async () => {
     await initializeApp();
-    const server = app.listen(config.PORT, config.HOST, () => {
+    const server = app.listen(PORT, HOST, () => {
         console.log(`Server is running on ${config.HOST}:${config.PORT}`);
     });
 
