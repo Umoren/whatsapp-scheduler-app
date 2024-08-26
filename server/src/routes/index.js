@@ -6,8 +6,8 @@ const {
     isClientAuthenticated,
     getClientReadyStatus,
     getDetailedClientState,
-    updateClientHeartbeat,
     ensureInitialized,
+    LOCK_KEY,
 } = require('../services/whatsappClient');
 const { sendTestMessage, scheduleMessage, cancelScheduledMessage, getScheduledJobs } = require('../services/messageService');
 const messageLimiter = require('../middlewares/rateLimiter');
