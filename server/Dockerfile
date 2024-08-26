@@ -21,4 +21,6 @@ RUN apt-get update && apt-get install -y \
 COPY prod_start.sh .
 RUN chmod +x prod_start.sh
 
+EXPOSE 3000
+
 CMD ["./prod_start.sh"]
