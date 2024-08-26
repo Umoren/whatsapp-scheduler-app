@@ -5,7 +5,8 @@ const { createModuleLogger } = require('../middlewares/logger');
 const Redis = require('ioredis');
 const { promisify } = require('util');
 const logger = createModuleLogger('whatsappClient');
-const redis = new Redis(process.env.REDIS_URL);
+
+let redis;
 
 if (process.env.REDIS_URL) {
     redis = new Redis(process.env.REDIS_URL);
@@ -17,7 +18,11 @@ if (process.env.REDIS_URL) {
     });
 } else {
     logger.warn('REDIS_URL not set. Using in-memory store for locking mechanism. This is not suitable for production.');
-    // ... (rest of the fallback code)
+    // Implement a simple in-memory store for local development
+    redis = {
+        set: (key, value, mode, duration) => Promise.resolve('OK'),
+        eval: () => Promise.resolve(1)
+    };
 }
 
 // We only need redisSet for now
