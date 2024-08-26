@@ -5,6 +5,8 @@ const {
     isQRLoading,
     isClientAuthenticated,
     getClientReadyStatus,
+    getDetailedClientState,
+    updateClientHeartbeat,
     ensureInitialized,
 } = require('../services/whatsappClient');
 const { sendTestMessage, scheduleMessage, cancelScheduledMessage, getScheduledJobs } = require('../services/messageService');
@@ -54,10 +56,15 @@ router.get('/qr', async (req, res, next) => {
 });
 
 
-router.get('/auth-status', (req, res) => {
+router.get('/auth-status', async (req, res) => {
+    const detailedState = getDetailedClientState();
+    const lockStatus = await redis.get(LOCK_KEY);
+    const heartbeat = await redis.get('whatsapp_client_heartbeat');
+
     res.json({
-        authenticated: isClientAuthenticated(),
-        clientReady: getClientReadyStatus()
+        ...detailedState,
+        lockAcquired: !!lockStatus,
+        lastHeartbeat: heartbeat ? new Date(parseInt(heartbeat)) : null
     });
 });
 
@@ -162,8 +169,9 @@ router.get('/scheduled-jobs', authMiddleware, async (req, res, next) => {
 });
 
 
-router.get('/healthz', (req, res) => {
-    res.status(200).json({ status: 'OK', message: 'Server is running' });
+router.get('/health', (req, res) => {
+    const isHealthy = isClientAuthenticated() && getClientReadyStatus();
+    res.status(isHealthy ? 200 : 503).json({ status: isHealthy ? 'healthy' : 'unhealthy' });
 });
 
 router.get('/whatsapp-status', (req, res) => {

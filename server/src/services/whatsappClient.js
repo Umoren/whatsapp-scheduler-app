@@ -94,17 +94,27 @@ function setupClientListeners(client) {
         clientState.isAuthenticated = false;
     });
 
-    client.on('disconnected', (reason) => {
-        console.log('Client was disconnected', reason);
+    client.on('disconnected', async (reason) => {
+        logger.warn('Client was disconnected', reason);
         clientState.isAuthenticated = false;
         clientState.isInitialized = false;
         clientState.isClientReady = false;
+
+        // Attempt to reinitialize after a short delay
+        setTimeout(async () => {
+            try {
+                await initializeClient();
+            } catch (error) {
+                logger.error('Failed to reinitialize client after disconnection:', error);
+            }
+        }, 5000);
     });
 }
 
 async function acquireLock() {
     const lockValue = Date.now().toString();
     const result = await redisSet(LOCK_KEY, lockValue, 'NX', 'PX', LOCK_TTL);
+    logger.info(`Lock acquisition attempt: ${result === 'OK' ? 'successful' : 'failed'}`);
     return result === 'OK' ? lockValue : null;
 }
 
@@ -117,6 +127,7 @@ async function releaseLock(lockValue) {
         end
     `;
     const result = await redis.eval(script, 1, LOCK_KEY, lockValue);
+    logger.info(`Lock release attempt: ${result === 1 ? 'successful' : 'failed'}`);
     return result === 1;
 }
 
@@ -188,6 +199,14 @@ async function initializeClient() {
     return client;
 }
 
+async function updateClientHeartbeat() {
+    if (client && clientState.isAuthenticated) {
+        await redis.set('whatsapp_client_heartbeat', Date.now(), 'EX', 60);
+    }
+}
+
+setInterval(updateClientHeartbeat, 30000);
+
 
 function getQRImageData() {
     return qrImageData;
@@ -209,17 +228,14 @@ function getClientReadyStatus() {
     return clientState.isClientReady;
 }
 
-async function logout() {
-    console.log('Performing fake logout...');
-    // Don't actually do anything with the client, just reset the state
-    clientState = {
-        isLoading: false,
-        isAuthenticated: false,
-        isInitialized: true,
-        isClientReady: false
+function getDetailedClientState() {
+    return {
+        isLoading: clientState.isLoading,
+        isAuthenticated: clientState.isAuthenticated,
+        isInitialized: clientState.isInitialized,
+        isClientReady: clientState.isClientReady,
+        hasQR: !!qrImageData
     };
-    console.log('Fake logout complete. Client state reset.');
-    return { success: true, message: 'Logged out successfully' };
 }
 
 async function ensureInitialized() {
@@ -277,11 +293,12 @@ module.exports = {
     initializeClient,
     getQRImageData,
     getClientState,
+    updateClientHeartbeat,
     isClientAuthenticated,
     isQRLoading,
     getClientReadyStatus,
-    logout,
     ensureInitialized,
     gracefulShutdown,
+    getDetailedClientState,
     getClient: () => client
 };
