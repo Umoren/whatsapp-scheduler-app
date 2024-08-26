@@ -21,6 +21,10 @@ const redis = new Redis(process.env.REDIS_URL);
 const router = express.Router();
 const logger = createModuleLogger(path.basename(__filename));
 
+router.get('/', (req, res) => {
+    res.status(200).send('WhatsApp Scheduler is running');
+});
+
 router.get('/qr', async (req, res, next) => {
     logger.info('QR route accessed');
     try {
