@@ -13,6 +13,8 @@ const { MessageSchema } = require('../utils/schema');
 const { BadRequestError, AppError } = require('../utils/errors');
 const { createModuleLogger } = require('../middlewares/logger');
 const authMiddleware = require('../middlewares/authMiddleware');
+const Redis = require('ioredis');
+const redis = new Redis(process.env.REDIS_URL);
 
 const router = express.Router();
 const logger = createModuleLogger(path.basename(__filename));
@@ -162,6 +164,14 @@ router.get('/scheduled-jobs', authMiddleware, async (req, res, next) => {
 
 router.get('/healthz', (req, res) => {
     res.status(200).json({ status: 'OK', message: 'Server is running' });
+});
+
+router.get('/whatsapp-status', (req, res) => {
+    res.json({
+        isAuthenticated: isClientAuthenticated(),
+        isReady: getClientReadyStatus(),
+        lockStatus: redis.get(LOCK_KEY).then(value => !!value)
+    });
 });
 
 module.exports = router;
