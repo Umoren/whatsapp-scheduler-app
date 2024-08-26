@@ -73,8 +73,6 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
     boxShadow: 'none'
 }));
 
-const API_URL = '';
-
 function AppContent() {
     const [tabValue, setTabValue] = useState(0);
     const { fetchJobs } = useScheduledJobs();
@@ -86,6 +84,9 @@ function AppContent() {
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
     const [session, setSession] = useState(null);
     const [isWhatsAppAuthenticated, setIsWhatsAppAuthenticated] = useState(false);
+    const [hasQR, setHasQR] = useState(false);
+    const [lockAcquired, setLockAcquired] = useState(false);
+    const [lastHeartbeat, setLastHeartbeat] = useState(null);
 
     useEffect(() => {
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
@@ -172,22 +173,24 @@ function AppContent() {
                     'Authorization': `Bearer ${session.access_token}`
                 }
             });
-            const data = await response.data;
-            setIsWhatsAppAuthenticated(data.authenticated);
-            setIsClientReady(data.clientReady);
+            const data = response.data;
+
+            setIsWhatsAppAuthenticated(data.isAuthenticated);
+            setIsClientReady(data.isClientReady);
+            setIsLoading(data.isLoading);
+
+            // New states based on the updated response
+            setHasQR(data.hasQR);
+            setLockAcquired(data.lockAcquired);
+            setLastHeartbeat(new Date(data.lastHeartbeat));
+
         } catch (error) {
             console.error('Error checking WhatsApp auth status:', error);
             if (error.response) {
-                // The request was made and the server responded with a status code
-                // that falls out of the range of 2xx
-                console.error('Response data:', error.response.data);
-                console.error('Response status:', error.response.status);
-                console.error('Response headers:', error.response.headers);
+                console.error('Response data:', error.response);
             } else if (error.request) {
-                // The request was made but no response was received
                 console.error('No response received:', error.request);
             } else {
-                // Something happened in setting up the request that triggered an Error
                 console.error('Error setting up request:', error.message);
             }
             showToast('error', 'Failed to check WhatsApp authentication status');
@@ -263,8 +266,6 @@ function AppContent() {
             }
         }
     }
-
-
     const renderContent = () => {
         if (isLoading) {
             return (
@@ -281,7 +282,7 @@ function AppContent() {
             return <Login />;
         }
 
-        if (!isWhatsAppAuthenticated) {
+        if (!isWhatsAppAuthenticated || hasQR) {
             return <AuthSection onAuthenticated={() => setIsWhatsAppAuthenticated(true)} />;
         }
 
