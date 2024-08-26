@@ -168,18 +168,15 @@ router.get('/scheduled-jobs', authMiddleware, async (req, res, next) => {
     }
 });
 
-
 router.get('/health', (req, res) => {
-    const isHealthy = isClientAuthenticated() && getClientReadyStatus();
-    res.status(isHealthy ? 200 : 503).json({ status: isHealthy ? 'healthy' : 'unhealthy' });
+    const clientState = getDetailedClientState();
+
+    if (clientState.isInitialized && clientState.isAuthenticated) {
+        res.status(200).json({ status: 'healthy', message: 'WhatsApp client is ready' });
+    } else {
+        res.status(503).json({ status: 'unhealthy', message: 'WhatsApp client is not ready' });
+    }
 });
 
-router.get('/whatsapp-status', (req, res) => {
-    res.json({
-        isAuthenticated: isClientAuthenticated(),
-        isReady: getClientReadyStatus(),
-        lockStatus: redis.get(LOCK_KEY).then(value => !!value)
-    });
-});
 
 module.exports = router;
