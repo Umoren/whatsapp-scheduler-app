@@ -10,7 +10,6 @@ force_https = true
 auto_stop_machines = "off"
 auto_start_machines = true
 min_machines_running = 1
-max_machines_running = 1
 processes = ['app']
 
 [[vm]]
@@ -23,4 +22,9 @@ source = "whatsapp_auth"
 destination = "/app/.wwebjs_auth"
 
 [deploy]
-strategy = "rolling"
+strategy = "immediate"
+max_unavailable = 1
+
+[[services]]
+min_machines_running = 1
+max_machines_running = 1
