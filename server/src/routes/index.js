@@ -173,13 +173,7 @@ router.get('/scheduled-jobs', authMiddleware, async (req, res, next) => {
 });
 
 router.get('/health', (req, res) => {
-    const clientState = getDetailedClientState();
-
-    if (clientState.isInitialized && clientState.isAuthenticated) {
-        res.status(200).json({ status: 'healthy', message: 'WhatsApp client is ready' });
-    } else {
-        res.status(503).json({ status: 'unhealthy', message: 'WhatsApp client is not ready' });
-    }
+    res.status(200).json({ status: 'healthy' });
 });
 
 

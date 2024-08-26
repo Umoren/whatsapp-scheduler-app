@@ -14,7 +14,7 @@ const { loggingMiddleware } = require('./middlewares/logger');
 
 const app = express();
 
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 const HOST = '0.0.0.0';
 
 app.set('trust proxy', 1);
