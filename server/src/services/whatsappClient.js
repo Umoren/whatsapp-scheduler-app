@@ -20,7 +20,6 @@ let clientState = {
 
 const BASE_AUTH_PATH = process.env.FLY_APP_NAME ? '/app/.wwebjs_auth' : path.join(__dirname, '..', '..', '.wwebjs_auth');
 
-
 function createClient() {
     return new Client({
         authStrategy: new LocalAuth({
@@ -38,19 +37,18 @@ function createClient() {
 
 function setupClientListeners(client) {
     client.on('qr', async (qr) => {
-        logger.info('QR RECEIVED');
+        console.log('QR RECEIVED');
         try {
             qrImageData = await qrcode.toDataURL(qr);
             clientState.isLoading = false;
             clientState.isAuthenticated = false;
-            logger.info('QR code generated successfully');
         } catch (error) {
-            logger.error('Failed to generate QR code:', error);
+            console.error('Failed to generate QR code:', error);
         }
     });
 
     client.on('ready', () => {
-        logger.info('Client is ready!');
+        console.log('Client is ready!');
         clientState = {
             isLoading: false,
             isAuthenticated: true,
@@ -61,18 +59,18 @@ function setupClientListeners(client) {
     });
 
     client.on('authenticated', () => {
-        logger.info('Client is authenticated');
+        console.log('Client is authenticated');
         clientState.isAuthenticated = true;
         qrImageData = '';
     });
 
     client.on('auth_failure', (msg) => {
-        logger.error('Authentication failure:', msg);
+        console.error('Authentication failure:', msg);
         clientState.isAuthenticated = false;
     });
 
     client.on('disconnected', (reason) => {
-        logger.info('Client was disconnected', reason);
+        console.log('Client was disconnected', reason);
         clientState.isAuthenticated = false;
         clientState.isInitialized = false;
         clientState.isClientReady = false;
@@ -83,13 +81,8 @@ async function initializeClient() {
     const start = Date.now();
     logger.info('Starting client initialization');
 
-    if (client && clientState.isInitialized && clientState.isAuthenticated) {
-        logger.info('Client already initialized and authenticated, skipping initialization');
-        return client;
-    }
-
     if (client) {
-        logger.info('Destroying existing client before reinitializing');
+        logger.info('Client already exists, destroying old client...');
         await client.destroy();
     }
 
@@ -122,6 +115,7 @@ async function initializeClient() {
     return client;
 }
 
+
 function getQRImageData() {
     return qrImageData;
 }
@@ -143,7 +137,7 @@ function getClientReadyStatus() {
 }
 
 async function logout() {
-    logger.info('Performing fake logout...');
+    console.log('Performing fake logout...');
     // Don't actually do anything with the client, just reset the state
     clientState = {
         isLoading: false,
@@ -151,7 +145,7 @@ async function logout() {
         isInitialized: true,
         isClientReady: false
     };
-    logger.info('Fake logout complete. Client state reset.');
+    console.log('Fake logout complete. Client state reset.');
     return { success: true, message: 'Logged out successfully' };
 }
 
@@ -186,7 +180,7 @@ async function gracefulShutdown() {
 
 // Handle process termination
 process.on('SIGTERM', async () => {
-    logger.info('SIGTERM received. Cleaning up...');
+    console.log('SIGTERM received. Cleaning up...');
     if (client) {
         await client.destroy();
     }
