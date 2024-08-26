@@ -12,6 +12,7 @@ if (process.env.REDIS_URL) {
     redis = new Redis(process.env.REDIS_URL);
     redis.on('connect', () => {
         logger.info('Successfully connected to Redis');
+        setupRedisMonitoring(redis);
     });
     redis.on('error', (error) => {
         logger.error('Redis connection error:', error);
@@ -260,11 +261,17 @@ process.on('SIGTERM', async () => {
 });
 
 // Monitor Redis commands
-redis.monitor((err, monitor) => {
-    monitor.on('monitor', (time, args) => {
-        logger.debug('Redis command:', args);
+function setupRedisMonitoring(redisClient) {
+    redisClient.monitor((err, monitor) => {
+        if (err) {
+            logger.error('Error setting up Redis monitoring:', err);
+            return;
+        }
+        monitor.on('monitor', (time, args) => {
+            logger.debug('Redis command:', args);
+        });
     });
-});
+}
 
 module.exports = {
     initializeClient,
