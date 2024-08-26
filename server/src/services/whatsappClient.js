@@ -2,12 +2,31 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode');
 const path = require('path');
 const { createModuleLogger } = require('../middlewares/logger');
-
+const Redis = require('ioredis');
+const { promisify } = require('util');
 const logger = createModuleLogger('whatsappClient');
+const redis = new Redis(process.env.REDIS_URL);
 
+if (process.env.REDIS_URL) {
+    redis = new Redis(process.env.REDIS_URL);
+    redis.on('connect', () => {
+        logger.info('Successfully connected to Redis');
+    });
+    redis.on('error', (error) => {
+        logger.error('Redis connection error:', error);
+    });
+} else {
+    logger.warn('REDIS_URL not set. Using in-memory store for locking mechanism. This is not suitable for production.');
+    // ... (rest of the fallback code)
+}
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 5000; // 5 seconds
+// We only need redisSet for now
+const redisSet = promisify(redis.set).bind(redis);
+
+const LOCK_KEY = 'whatsapp_client_lock';
+const LOCK_TTL = 30000; // 30 seconds
+const RETRY_DELAY = 1000; // 1 second
+const MAX_RETRIES = 30;
 
 let client = null;
 let qrImageData = '';
@@ -77,41 +96,89 @@ function setupClientListeners(client) {
     });
 }
 
+async function acquireLock() {
+    const lockValue = Date.now().toString();
+    const result = await redisSet(LOCK_KEY, lockValue, 'NX', 'PX', LOCK_TTL);
+    return result === 'OK' ? lockValue : null;
+}
+
+async function releaseLock(lockValue) {
+    const script = `
+        if redis.call("get", KEYS[1]) == ARGV[1] then
+            return redis.call("del", KEYS[1])
+        else
+            return 0
+        end
+    `;
+    const result = await redis.eval(script, 1, LOCK_KEY, lockValue);
+    return result === 1;
+}
+
 async function initializeClient() {
-    const start = Date.now();
-    logger.info('Starting client initialization');
+    let lockValue = null;
+    let retries = 0;
 
-    if (client) {
-        logger.info('Client already exists, destroying old client...');
-        await client.destroy();
-    }
-
-    client = createClient();
-    setupClientListeners(client);
-
-    for (let i = 0; i < MAX_RETRIES; i++) {
-        try {
-            logger.info(`Attempt ${i + 1} to initialize client...`);
-            const initStart = Date.now();
-            await client.initialize();
-            const initDuration = Date.now() - initStart;
-            logger.info(`Client initialized successfully in ${initDuration}ms`);
-            clientState.isInitialized = true;
-            break;
-        } catch (error) {
-            logger.error(`Failed to initialize client (attempt ${i + 1}):`, { error, stack: error.stack });
-            if (i < MAX_RETRIES - 1) {
-                logger.info(`Retrying in ${RETRY_DELAY / 1000} seconds...`);
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-            } else {
-                logger.error('All initialization attempts failed.');
-                throw new Error('Failed to initialize WhatsApp client after multiple attempts');
-            }
+    while (!lockValue && retries < MAX_RETRIES) {
+        lockValue = await acquireLock();
+        if (!lockValue) {
+            logger.info(`Failed to acquire lock. Retrying in ${RETRY_DELAY}ms...`);
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            retries++;
         }
     }
 
-    const totalDuration = Date.now() - start;
-    logger.info(`Total client initialization time: ${totalDuration}ms`);
+    if (!lockValue) {
+        throw new Error('Failed to acquire lock after maximum retries');
+    }
+
+    try {
+        logger.info('Lock acquired. Initializing WhatsApp client...');
+
+        const start = Date.now();
+        logger.info('Starting client initialization');
+
+        if (client) {
+            logger.info('Client already exists, destroying old client...');
+            await client.destroy();
+        }
+
+        client = createClient();
+        setupClientListeners(client);
+
+        for (let i = 0; i < MAX_RETRIES; i++) {
+            try {
+                logger.info(`Attempt ${i + 1} to initialize client...`);
+                const initStart = Date.now();
+                await client.initialize();
+                const initDuration = Date.now() - initStart;
+                logger.info(`Client initialized successfully in ${initDuration}ms`);
+                clientState.isInitialized = true;
+                break;
+            } catch (error) {
+                logger.error(`Failed to initialize client (attempt ${i + 1}):`, { error, stack: error.stack });
+                if (i < MAX_RETRIES - 1) {
+                    logger.info(`Retrying in ${RETRY_DELAY / 1000} seconds...`);
+                    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                } else {
+                    logger.error('All initialization attempts failed.');
+                    throw new Error('Failed to initialize WhatsApp client after multiple attempts');
+                }
+            }
+        }
+
+        const totalDuration = Date.now() - start;
+        logger.info(`Total client initialization time: ${totalDuration}ms`);
+
+        logger.info('WhatsApp client initialized successfully');
+    } finally {
+        const released = await releaseLock(lockValue);
+        if (released) {
+            logger.info('Lock released successfully');
+        } else {
+            logger.warn('Failed to release lock. It may have expired.');
+        }
+    }
+
     return client;
 }
 
@@ -185,6 +252,13 @@ process.on('SIGTERM', async () => {
         await client.destroy();
     }
     process.exit(0);
+});
+
+// Monitor Redis commands
+redis.monitor((err, monitor) => {
+    monitor.on('monitor', (time, args) => {
+        logger.debug('Redis command:', args);
+    });
 });
 
 module.exports = {
