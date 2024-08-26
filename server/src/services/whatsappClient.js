@@ -300,5 +300,6 @@ module.exports = {
     ensureInitialized,
     gracefulShutdown,
     getDetailedClientState,
-    getClient: () => client
+    getClient: () => client,
+    LOCK_KEY,
 };
