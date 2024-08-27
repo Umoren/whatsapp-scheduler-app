@@ -7,7 +7,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const config = require('./config');
 const routes = require('./routes');
-const { initializeClient, gracefulShutdown } = require('./services/whatsappClient');
+const { gracefulShutdown } = require('./services/whatsappClient');
 const { loadJobs } = require('./services/messageService');
 const errorHandler = require('./middlewares/errorHandler');
 const { loggingMiddleware } = require('./middlewares/logger');
@@ -53,7 +53,7 @@ app.use('/api', routes);
 
 // Serve static files and handle client-side routing
 if (process.env.NODE_ENV === 'production') {
-    const clientDistPath = path.join(__dirname, 'client', 'dist');
+    const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
     app.use(staticFileLimiter, express.static(clientDistPath));
     app.get('*', catchAllLimiter, (req, res) => {
         res.sendFile(path.join(clientDistPath, 'index.html'));
@@ -80,13 +80,11 @@ app.use((err, req, res, next) => {
 // App initialization
 async function initializeApp() {
     try {
-        await initializeClient();
-        console.log('WhatsApp client initialized successfully');
         await loadJobs();
         console.log('Scheduled jobs loaded successfully');
     } catch (err) {
         console.error('Error during app initialization:', err);
-        console.log('Starting server without fully initialized WhatsApp client...');
+        console.log('Starting server without fully initialized jobs...');
     }
 }
 
@@ -103,9 +101,9 @@ const startServer = async () => {
             console.log('Http server closed.');
             try {
                 await gracefulShutdown();
-                console.log('WhatsApp client shut down successfully.');
+                console.log('WhatsApp clients shut down successfully.');
             } catch (error) {
-                console.error('Error during WhatsApp client shutdown:', error);
+                console.error('Error during WhatsApp clients shutdown:', error);
             }
             process.exit(0);
         });
