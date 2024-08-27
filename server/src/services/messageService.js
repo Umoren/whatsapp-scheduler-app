@@ -33,7 +33,9 @@ async function loadJobs() {
             const job = schedule.scheduleJob(jobData.id, jobData.cron_expression, async () => {
                 logger.info(`Executing scheduled job ${jobData.id} at ${new Date()}`);
                 try {
+                    const client = await ensureInitialized(jobData.user_id);
                     await sendTestMessage(
+                        client,
                         jobData.recipient_type,
                         decrypt(jobData.recipient_name),
                         decrypt(jobData.message),
@@ -119,11 +121,10 @@ async function getImageMedia(imageUrl) {
 
 }
 
-async function sendTestMessage(recipientType, recipients, message, imageUrl = null) {
+async function sendTestMessage(client, recipientType, recipients, message, imageUrl = null) {
     logger.info('Starting sendTestMessage function', { recipientType, recipients, message, imageUrl });
 
     try {
-        const client = await ensureInitialized();
         if (!client) {
             throw new WhatsAppClientError('WhatsApp client is not initialized');
         }
@@ -200,7 +201,8 @@ async function scheduleMessage(cronExpression, recipientType, recipientName, mes
         const job = schedule.scheduleJob(id, normalizedCronExpression, async () => {
             logger.info(`Executing scheduled job ${id} at ${new Date()}`);
             try {
-                await sendTestMessage(recipientType, recipientName, message, imageUrl);
+                const client = await ensureInitialized(userId);
+                await sendTestMessage(client, recipientType, recipientName, message, imageUrl);
                 logger.info(`Scheduled message sent at ${new Date()}`);
                 await supabase.from('scheduled_jobs').update({
                     next_run_at: calculateNextRunTime(normalizedCronExpression),
@@ -222,12 +224,12 @@ async function scheduleMessage(cronExpression, recipientType, recipientName, mes
     }
 }
 
-async function cancelScheduledMessage(id) {
+async function cancelScheduledMessage(id, userId) {
     try {
         const { data, error } = await supabase
             .from('scheduled_jobs')
             .delete()
-            .match({ id });
+            .match({ id, user_id: userId });
 
         if (error) throw error;
 
@@ -246,7 +248,6 @@ async function cancelScheduledMessage(id) {
         return false;
     }
 }
-
 
 async function getScheduledJobs(userId) {
     try {
@@ -284,6 +285,7 @@ async function getScheduledJobs(userId) {
         throw error;
     }
 }
+
 
 function calculateNextRunTime(cronExpression) {
     return schedule.scheduleJob(cronExpression, () => { }).nextInvocation();
