@@ -97,23 +97,22 @@ class UserSessionManager {
     async getSessionState(userId) {
         const session = this.sessions.get(userId);
         if (!session) {
-            return null;
+            // Check if there's a persisted state in Supabase
+            const { data, error } = await supabase
+                .from('user_whatsapp_sessions')
+                .select('state')
+                .eq('user_id', userId)
+                .single();
+
+            if (error) {
+                logger.error(`Failed to fetch session state from Supabase for user ${userId}:`, error);
+                return null;
+            }
+
+            return data?.state || null;
         }
 
-        // Check if there's a persisted state in Supabase
-        const { data, error } = await supabase
-            .from('user_whatsapp_sessions')
-            .select('state')
-            .eq('user_id', userId)
-            .single();
-
-        if (error) {
-            logger.error(`Failed to fetch session state from Supabase for user ${userId}:`, error);
-        }
-
-        // Merge persisted state with in-memory state
-        const persistedState = data?.state || {};
-        return { ...persistedState, ...session.state };
+        return session.state;
     }
 
     async persistSessionState(userId) {
