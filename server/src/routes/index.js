@@ -24,6 +24,11 @@ router.get('/qr', authMiddleware, async (req, res, next) => {
         await ensureInitialized(req.user.id);
         const clientState = await getClientState(req.user.id);
 
+        if (!clientState) {
+            logger.warn('Client state is null', { userId: req.user.id });
+            return res.status(500).json({ error: 'Failed to retrieve client state' });
+        }
+
         if (clientState.isAuthenticated) {
             logger.info('Client already authenticated', { userId: req.user.id });
             return res.status(200).json({ authenticated: true });

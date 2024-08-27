@@ -14,7 +14,13 @@ async function ensureInitialized(userId) {
 }
 
 async function getClientState(userId) {
-    return await UserSessionManager.getSessionState(userId);
+    const state = await UserSessionManager.getSessionState(userId);
+    return state || {
+        isInitialized: false,
+        isAuthenticated: false,
+        qrCode: null,
+        lastHeartbeat: null
+    };
 }
 
 async function updateClientHeartbeat(userId) {
