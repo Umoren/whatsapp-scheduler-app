@@ -3,12 +3,10 @@
   "outputDirectory": "client/dist",
   "devCommand": "npm run dev",
   "framework": "vite",
-  "redirects": [
-    { "source": "/", "destination": "/landing.html" },
-    { "source": "/app", "destination": "/index.html" },
-    { "source": "/app/(.*)", "destination": "/index.html" }
-  ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
+    { "source": "/app", "destination": "/index.html" },
+    { "source": "/app/(.*)", "destination": "/index.html" },
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/((?!landing\\.html$).*)", "destination": "/landing.html" }
   ]
 }

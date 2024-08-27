@@ -52,6 +52,25 @@
             animation: moveDots 20s linear infinite;
         }
 
+        @media (max-width: 640px) {
+            h1 {
+                font-size: 2.5rem !important;
+            }
+
+            h2 {
+                font-size: 2rem !important;
+            }
+
+            h3 {
+                font-size: 1.5rem !important;
+            }
+
+            p,
+            li {
+                font-size: 1rem !important;
+            }
+        }
+
         @keyframes moveDots {
             0% {
                 background-position: 0 0;
@@ -100,8 +119,8 @@
                     Me a Coffee</a>
             </div>
             <a href="/app" id="cta-button"
-                class="bg-yellow-400 text-black px-4 py-2 rounded-lg hover:bg-yellow-300 transition duration-300">
-                Schedule a Message Now
+                class="bg-yellow-400 text-black px-2 py-2 rounded-lg hover:bg-yellow-300 transition duration-300">
+                Schedule now
             </a>
         </nav>
     </header>
@@ -109,28 +128,30 @@
     <main>
         <section class="dot-bg py-20 text-center h-[70vh] flex items-center">
             <div class="container mx-auto px-4">
-                <h1 class="text-5xl md:text-6xl font-bold mb-6">Schedule WhatsApp Messages Now! ⚡</h1>
-                <p class="text-xl mb-8 max-w-2xl mx-auto">
-                    Streamline Your Communication Today, Prepare for Intelligent Automation Tomorrow.
+                <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">Schedule WhatsApp Messages Now! ⚡</h1>
+                <p class="text-lg sm:text-xl mb-8 max-w-2xl mx-auto">
+                    streamline your communication today. plan and send whatsApp messages at your preferred time
                 </p>
                 <a href="/app"
-                    class="bg-black text-white px-8 py-3 rounded-lg text-xl hover:bg-gray-800 transition duration-300 inline-flex items-center">
+                    class="bg-black text-white px-6 py-3 rounded-lg text-base sm:text-lg md:text-xl hover:bg-gray-800 transition duration-300 inline-flex items-center">
                     <span class="mr-2">⏰</span>
-                    Schedule Your First Message
+                    Schedule a Message
                 </a>
+
             </div>
         </section>
 
         <section id="how-it-works" class="py-20 bg-white">
             <div class="container mx-auto px-4">
-                <h2 class="text-3xl font-bold text-center mb-12">How It Works</h2>
+                <h2 class="text-2xl sm:text-3xl font-bold text-center mb-12">How It Works</h2>
                 <div class="flex flex-col md:flex-row justify-center items-center space-y-8 md:space-y-0 md:space-x-12">
                     <div class="text-center float">
                         <div class="bg-blue-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-4">
                             <span class="text-5xl">🔗</span>
                         </div>
-                        <h3 class="text-lg font-semibold mb-2">Connect WhatsApp</h3>
-                        <p class="text-gray-600">Link Your WhatsApp Account Securely to Our Platform.</p>
+                        <h3 class="text-base sm:text-lg font-semibold mb-2">Connect WhatsApp</h3>
+                        <p class="text-sm sm:text-base text-gray-600">Link Your WhatsApp Account Securely to the app.
+                        </p>
                     </div>
                     <svg class="w-12 h-12 text-gray-400 hidden md:block" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -171,8 +192,10 @@
                             <path stroke-linecap="round" stroke-linejoin="round"
                                 d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                         </svg>
-                        <h3 class="text-xl font-semibold mb-4">Message Scheduling</h3>
-                        <p>Plan and Send WhatsApp Messages at Your Preferred Times, Ensuring Timely Communication.</p>
+                        <h3 class="text-lg sm:text-xl font-semibold mb-4">Message Scheduling</h3>
+                        <p class="text-sm sm:text-base">Plan and Send WhatsApp Messages at Your Preferred Times,
+                            Ensuring Timely Communication.</p>
+
                     </div>
 
                     <div
@@ -205,7 +228,7 @@
                 <h2 class="text-3xl font-bold text-center mb-12">Business Edition Features</h2>
                 <div class="grid md:grid-cols-2 gap-8">
                     <div class="bg-white bg-opacity-10 p-6 rounded-lg backdrop-filter backdrop-blur-lg">
-                        <h3 class="text-xl font-semibold mb-4 flex items-center">
+                        <h3 class="text-lg sm:text-xl font-semibold mb-4 flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                                 stroke="currentColor" class="w-8 h-8 mr-2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
@@ -214,8 +237,8 @@
                             Advanced Automation
                         </h3>
                         <ul class="space-y-2">
-                            <li class="flex items-center"><span class="text-yellow-300 mr-2">✨</span> AI-Powered Chatbot
-                                for Instant Responses</li>
+                            <li class="text-sm sm:text-base flex items-center"><span
+                                    class="text-yellow-300 mr-2">✨</span> AI-Powered Chatbot for Instant Responses</li>
                             <li class="flex items-center"><span class="text-yellow-300 mr-2">✨</span> Customizable
                                 Auto-Reply Templates</li>
                             <li class="flex items-center"><span class="text-yellow-300 mr-2">✨</span> Workflow
