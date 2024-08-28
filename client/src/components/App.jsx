@@ -177,26 +177,21 @@ function AppContent() {
 
             setIsWhatsAppAuthenticated(data.isAuthenticated);
             setIsClientReady(data.isClientReady);
-            setIsLoading(data.isLoading);
+            setIsLoading(false);  // Add this line
+            setHasQR(data.qrCode !== null);  // Modified this line
+            setLastHeartbeat(data.lastHeartbeat ? new Date(data.lastHeartbeat) : null);
 
-            // New states based on the updated response
-            setHasQR(data.hasQR);
-            setLockAcquired(data.lockAcquired);
-            setLastHeartbeat(new Date(data.lastHeartbeat));
+            if (data.qrCode) {
+                // If there's a QR code, we're not authenticated yet
+                setIsWhatsAppAuthenticated(false);
+            }
 
         } catch (error) {
             console.error('Error checking WhatsApp auth status:', error);
-            if (error.response) {
-                console.error('Response data:', error.response);
-            } else if (error.request) {
-                console.error('No response received:', error.request);
-            } else {
-                console.error('Error setting up request:', error.message);
-            }
             showToast('error', 'Failed to check WhatsApp authentication status');
+            setIsLoading(false);  // Add this line
         }
     };
-
 
     const handleLogout = async () => {
         try {
