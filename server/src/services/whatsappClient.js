@@ -16,7 +16,9 @@ async function ensureInitialized(userId) {
 }
 
 async function getClientState(userId) {
+    logger.debug(`Getting client state for user ${userId}`);
     const state = await UserSessionManager.getSessionState(userId);
+    logger.debug(`Retrieved client state for user ${userId}:`, state);
     return state || {
         isInitialized: false,
         isAuthenticated: false,
@@ -24,7 +26,6 @@ async function getClientState(userId) {
         lastHeartbeat: null
     };
 }
-
 async function updateClientHeartbeat(userId) {
     await UserSessionManager.updateSessionHeartbeat(userId);
 }

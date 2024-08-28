@@ -13,7 +13,7 @@ const objectStringifier = winston.format((info) => {
 
 // Create a Winston logger
 const logger = winston.createLogger({
-    level: 'debug',
+    level: 'debug', // Set to 'debug' to capture all levels
     format: winston.format.combine(
         objectStringifier(),
         winston.format.timestamp(),
@@ -27,23 +27,24 @@ const logger = winston.createLogger({
     ],
 });
 
-// If we're not in production, log to the console as well
-if (process.env.NODE_ENV !== 'production') {
-    logger.add(new winston.transports.Console({
-        format: winston.format.combine(
-            objectStringifier(),
-            winston.format.colorize(),
-            winston.format.simple()
-        ),
-    }));
-}
+// Always add console transport, but use different formats for different environments
+logger.add(new winston.transports.Console({
+    format: winston.format.combine(
+        objectStringifier(),
+        winston.format.colorize(),
+        winston.format.timestamp(),
+        winston.format.printf(({ timestamp, level, message, module, ...rest }) => {
+            return `${timestamp} ${level} ${module ? `[${module}] ` : ''}${message} ${Object.keys(rest).length ? JSON.stringify(rest, null, 2) : ''}`;
+        })
+    ),
+}));
 
 const loggingMiddleware = (req, res, next) => {
     const start = Date.now();
 
     res.on('finish', () => {
         const duration = Date.now() - start;
-        logger.info('HTTP Request', {
+        logger.debug('HTTP Request', {
             method: req.method,
             url: req.originalUrl,
             status: res.statusCode,

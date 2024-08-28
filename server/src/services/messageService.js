@@ -291,8 +291,6 @@ function calculateNextRunTime(cronExpression) {
     return schedule.scheduleJob(cronExpression, () => { }).nextInvocation();
 }
 
-
-
 module.exports = {
     sendTestMessage,
     scheduleMessage,
