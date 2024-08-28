@@ -84,8 +84,6 @@ function AppContent() {
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
     const [session, setSession] = useState(null);
     const [isWhatsAppAuthenticated, setIsWhatsAppAuthenticated] = useState(false);
-    const [hasQR, setHasQR] = useState(false);
-    const [lockAcquired, setLockAcquired] = useState(false);
     const [lastHeartbeat, setLastHeartbeat] = useState(null);
 
     useEffect(() => {
@@ -188,19 +186,13 @@ function AppContent() {
 
             setIsWhatsAppAuthenticated(data.isAuthenticated);
             setIsClientReady(data.isClientReady);
-            setIsLoading(false);  // Add this line
-            setHasQR(data.qrCode !== null);  // Modified this line
+            setIsLoading(false);
             setLastHeartbeat(data.lastHeartbeat ? new Date(data.lastHeartbeat) : null);
-
-            if (data.qrCode) {
-                // If there's a QR code, we're not authenticated yet
-                setIsWhatsAppAuthenticated(false);
-            }
 
         } catch (error) {
             console.error('Error checking WhatsApp auth status:', error);
             showToast('error', 'Failed to check WhatsApp authentication status');
-            setIsLoading(false);  // Add this line
+            setIsLoading(false);
         }
     };
 
@@ -272,6 +264,8 @@ function AppContent() {
             }
         }
     }
+
+    // render content
     const renderContent = () => {
         if (isLoading) {
             return (
@@ -288,7 +282,7 @@ function AppContent() {
             return <Login />;
         }
 
-        if (!isWhatsAppAuthenticated || hasQR) {
+        if (!isWhatsAppAuthenticated) {
             return <AuthSection onAuthenticated={() => setIsWhatsAppAuthenticated(true)} />;
         }
 
@@ -313,6 +307,7 @@ function AppContent() {
             </ScheduledJobsProvider>
         );
     };
+    // end of rendering main content. TODO: Move to components
 
     const drawer = (
         <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
