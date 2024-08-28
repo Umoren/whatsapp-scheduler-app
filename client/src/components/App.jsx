@@ -172,6 +172,16 @@ function AppContent() {
         return () => clearInterval(interval);
     }, [isWhatsAppAuthenticated, isClientReady, fetchJobs]);
 
+    // log state changes
+    useEffect(() => {
+        console.log('State changed:', {
+            isLoading,
+            isWhatsAppAuthenticated,
+            isClientReady,
+            session: !!session
+        });
+    }, [isLoading, isWhatsAppAuthenticated, isClientReady, session]);
+
     const checkWhatsAppAuthStatus = async () => {
         try {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -185,7 +195,7 @@ function AppContent() {
             const data = response.data;
 
             setIsWhatsAppAuthenticated(data.isAuthenticated);
-            setIsClientReady(data.isClientReady);
+            setIsClientReady(data.isAuthenticated); // Set isClientReady based on isAuthenticated
             setIsLoading(false);
             setLastHeartbeat(data.lastHeartbeat ? new Date(data.lastHeartbeat) : null);
 
@@ -193,6 +203,8 @@ function AppContent() {
             console.error('Error checking WhatsApp auth status:', error);
             showToast('error', 'Failed to check WhatsApp authentication status');
             setIsLoading(false);
+            setIsWhatsAppAuthenticated(false);
+            setIsClientReady(false);
         }
     };
 
@@ -283,7 +295,10 @@ function AppContent() {
         }
 
         if (!isWhatsAppAuthenticated) {
-            return <AuthSection onAuthenticated={() => setIsWhatsAppAuthenticated(true)} />;
+            return <AuthSection onAuthenticated={() => {
+                setIsWhatsAppAuthenticated(true);
+                setIsClientReady(true);
+            }} />;
         }
 
         if (!isClientReady) {
