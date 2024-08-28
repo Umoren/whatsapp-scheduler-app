@@ -13,7 +13,7 @@ const objectStringifier = winston.format((info) => {
 
 // Create a Winston logger
 const logger = winston.createLogger({
-    level: 'info',
+    level: 'debug',
     format: winston.format.combine(
         objectStringifier(),
         winston.format.timestamp(),
