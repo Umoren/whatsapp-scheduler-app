@@ -127,9 +127,20 @@ function AppContent() {
                         console.log("Supabase getUser response:", { user, error });
                         if (error) throw error;
                         setSession({ user, access_token });
+                        checkWhatsAppAuthStatus();
                     } catch (error) {
                         console.error("Error in authentication flow:", error);
+                        showToast('error', 'Authentication failed. Please try logging in again.');
                     }
+                }
+            } else {
+                // Check for existing session
+                const { data: { session }, error } = await supabaseClient.auth.getSession();
+                if (session) {
+                    setSession(session);
+                    checkWhatsAppAuthStatus();
+                } else {
+                    setIsLoading(false);
                 }
             }
         };

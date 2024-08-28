@@ -13,7 +13,13 @@ const authMiddleware = async (req, res, next) => {
 
     try {
         const { data: { user }, error } = await supabase.auth.getUser(token);
-        if (error) throw error;
+        if (error) {
+            if (error.status === 403 && error.code === "session_not_found") {
+                logger.warn('Session not found', { error });
+                return next(new UnauthorizedError('Session expired. Please log in again.'));
+            }
+            throw error;
+        }
         if (!user) throw new Error('User not found');
         req.user = user;
         logger.info('User authenticated', { userId: user.id });
