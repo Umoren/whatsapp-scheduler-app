@@ -21,14 +21,14 @@ function AuthSection({ onAuthenticated }) {
                 showToast('success', 'WhatsApp authenticated successfully');
                 onAuthenticated();
             } else if (response.status === 202) {
-                // QR code is still loading, retry after a short delay
-                setTimeout(getQRCode, 2000);
+                showToast('info', 'WhatsApp client is initializing. Please try again in a few seconds.');
+                setTimeout(getQRCode, 5000); // Retry after 5 seconds
             } else {
                 throw new Error(data.error || 'Failed to get QR code');
             }
         } catch (error) {
             console.error('Error getting QR code:', error);
-            showToast('error', 'Failed to get QR code. Please try again.');
+            showToast('error', `Failed to get QR code: ${error.message}. Please try again.`);
         } finally {
             setIsLoading(false);
         }

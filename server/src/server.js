@@ -7,7 +7,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const config = require('./config');
 const routes = require('./routes');
-const { gracefulShutdown } = require('./services/whatsappClient');
+const { gracefulShutdown, ensureInitialized } = require('./services/whatsappClient');
 const { loadJobs } = require('./services/messageService');
 const errorHandler = require('./middlewares/errorHandler');
 const { loggingMiddleware } = require('./middlewares/logger');
@@ -80,11 +80,15 @@ app.use((err, req, res, next) => {
 // App initialization
 async function initializeApp() {
     try {
+        // Initialize a default client
+        await ensureInitialized('default');
+        console.log('Default WhatsApp client initialized successfully');
+
         await loadJobs();
         console.log('Scheduled jobs loaded successfully');
     } catch (err) {
         console.error('Error during app initialization:', err);
-        console.log('Starting server without fully initialized jobs...');
+        console.log('Starting server without fully initialized WhatsApp client...');
     }
 }
 
