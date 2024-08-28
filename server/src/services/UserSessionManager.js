@@ -94,27 +94,50 @@ class UserSessionManager {
         }
     }
 
-    async getSessionState(userId) {
-        const session = this.sessions.get(userId);
-        if (!session) {
-            // Check if there's a persisted state in Supabase
-            const { data, error } = await supabase
-                .from('user_whatsapp_sessions')
-                .select('state')
-                .eq('user_id', userId)
-                .single();
+    async getOrCreateSession(userId) {
+        logger.debug(`Getting or creating session for user ${userId}`);
+        if (!this.sessions.has(userId)) {
+            logger.info(`Creating new WhatsApp client for user ${userId}`);
+            const client = new Client({
+                authStrategy: new LocalAuth({
+                    clientId: `user-${userId}`,
+                    dataPath: path.join(BASE_AUTH_PATH, userId)
+                }),
+                puppeteer: {
+                    args: [
+                        "--no-sandbox", "--disable-setuid-sandbox", "--headless=new", "--single-process"
+                    ],
+                    headless: false
+                },
+            });
 
-            if (error) {
-                logger.error(`Failed to fetch session state from Supabase for user ${userId}:`, error);
-                return null;
+            this.sessions.set(userId, {
+                client,
+                state: {
+                    isInitialized: false,
+                    isAuthenticated: false,
+                    qrCode: null,
+                    lastHeartbeat: Date.now()
+                }
+            });
+
+            this.setupClientListeners(userId, client);
+
+            try {
+                logger.debug(`Initializing client for user ${userId}`);
+                await client.initialize();
+                this.updateSessionState(userId, { isInitialized: true });
+                logger.info(`WhatsApp client initialized for user ${userId}`);
+            } catch (error) {
+                logger.error(`Failed to initialize WhatsApp client for user ${userId}`, error);
+                throw error;
             }
-
-            return data?.state || null;
+        } else {
+            logger.debug(`Session already exists for user ${userId}`);
         }
 
-        return session.state;
+        return this.sessions.get(userId);
     }
-
     async persistSessionState(userId) {
         const session = this.sessions.get(userId);
         if (!session) {

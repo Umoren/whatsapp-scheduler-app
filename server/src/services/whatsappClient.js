@@ -4,8 +4,10 @@ const { createModuleLogger } = require('../middlewares/logger');
 const logger = createModuleLogger('whatsappClient');
 
 async function ensureInitialized(userId) {
+    logger.info(`Ensuring WhatsApp client is initialized for user ${userId}`);
     try {
         const { client } = await UserSessionManager.getOrCreateSession(userId);
+        logger.info(`WhatsApp client ensured for user ${userId}`);
         return client;
     } catch (error) {
         logger.error(`Failed to initialize WhatsApp client for user ${userId}:`, error);

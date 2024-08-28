@@ -21,8 +21,13 @@ router.get('/', (req, res) => {
 router.get('/qr', authMiddleware, async (req, res, next) => {
     logger.info('QR route accessed', { userId: req.user.id });
     try {
+        logger.debug('Ensuring client is initialized', { userId: req.user.id });
         await ensureInitialized(req.user.id);
+
+        logger.debug('Getting client state', { userId: req.user.id });
         const clientState = await getClientState(req.user.id);
+
+        logger.debug('Client state retrieved', { userId: req.user.id, clientState });
 
         if (!clientState) {
             logger.warn('Client state is null', { userId: req.user.id });
@@ -42,8 +47,8 @@ router.get('/qr', authMiddleware, async (req, res, next) => {
         logger.info('QR code not available, client initializing', { userId: req.user.id });
         return res.status(202).json({ message: 'WhatsApp client initializing. Please try again shortly.' });
     } catch (error) {
-        logger.error('Error in QR route', { error, userId: req.user.id });
-        next(new AppError('Failed to initialize WhatsApp client or generate QR code', 500));
+        logger.error('Error in QR route', { error: error.message, stack: error.stack, userId: req.user.id });
+        return res.status(500).json({ error: 'An unexpected error occurred', details: error.message });
     }
 });
 
