@@ -35,6 +35,25 @@ function AuthSection({ onAuthenticated }) {
         getQRCode();  // Automatically try to get QR code on component mount
     }, []);
 
+    useEffect(() => {
+        const checkAuthAndGetQR = async () => {
+            try {
+                const response = await api.get('/auth-status');
+                if (response.data.isAuthenticated) {
+                    showToast('success', 'WhatsApp already authenticated');
+                    onAuthenticated();
+                } else {
+                    getQRCode();
+                }
+            } catch (error) {
+                console.error('Error checking auth status:', error);
+                getQRCode();
+            }
+        };
+
+        checkAuthAndGetQR();
+    }, []);
+
     return (
         <Container maxWidth="sm">
             <Paper elevation={3} sx={{ p: 4, mt: 4, textAlign: 'center' }}>
