@@ -13,7 +13,34 @@ class UserSessionManager {
         this.sessions = new Map();
     }
 
+    async getSessionState(userId) {
+        logger.debug(`Getting session state for user ${userId}`);
+        const session = this.sessions.get(userId);
+        if (!session) {
+            logger.debug(`No session found for user ${userId}`);
+            // Check if there's a persisted state in Supabase
+            const { data, error } = await supabase
+                .from('user_whatsapp_sessions')
+                .select('state')
+                .eq('user_id', userId)
+                .single();
+
+            if (error) {
+                logger.error(`Failed to fetch session state from Supabase for user ${userId}:`, error);
+                return null;
+            }
+
+            logger.debug(`Retrieved persisted state for user ${userId}:`, data?.state);
+            return data?.state || null;
+        }
+
+        logger.debug(`Retrieved session state for user ${userId}:`, session.state);
+        return session.state;
+    }
+
+
     async getOrCreateSession(userId) {
+        logger.info(`Getting or creating session for user ${userId}`);
         if (!this.sessions.has(userId)) {
             logger.info(`Creating new WhatsApp client for user ${userId}`);
             const client = new Client({
@@ -42,6 +69,7 @@ class UserSessionManager {
             this.setupClientListeners(userId, client);
 
             try {
+                logger.info(`Initializing client for user ${userId}`);
                 await client.initialize();
                 this.updateSessionState(userId, { isInitialized: true });
                 logger.info(`WhatsApp client initialized for user ${userId}`);
@@ -49,11 +77,12 @@ class UserSessionManager {
                 logger.error(`Failed to initialize WhatsApp client for user ${userId}`, error);
                 throw error;
             }
+        } else {
+            logger.info(`Session already exists for user ${userId}`);
         }
 
         return this.sessions.get(userId);
     }
-
     setupClientListeners(userId, client) {
         client.on('qr', async (qr) => {
             logger.info(`QR RECEIVED for user ${userId}`);
