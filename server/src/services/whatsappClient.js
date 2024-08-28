@@ -4,6 +4,11 @@ const { createModuleLogger } = require('../middlewares/logger');
 const logger = createModuleLogger('whatsappClient');
 
 async function ensureInitialized(userId) {
+    if (!userId || userId === 'default') {
+        logger.warn('Attempted to initialize client for invalid user', { userId });
+        throw new Error('Invalid user ID');
+    }
+
     logger.info(`Ensuring WhatsApp client is initialized for user ${userId}`);
     try {
         const { client } = await UserSessionManager.getOrCreateSession(userId);

@@ -52,6 +52,7 @@ router.get('/qr', authMiddleware, async (req, res, next) => {
     }
 });
 
+
 router.get('/auth-status', authMiddleware, async (req, res) => {
     const clientState = await getClientState(req.user.id);
     res.json({

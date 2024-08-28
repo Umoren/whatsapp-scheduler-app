@@ -81,8 +81,6 @@ app.use((err, req, res, next) => {
 async function initializeApp() {
     try {
         // Initialize a default client
-        await ensureInitialized('default');
-        console.log('Default WhatsApp client initialized successfully');
 
         await loadJobs();
         console.log('Scheduled jobs loaded successfully');
