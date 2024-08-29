@@ -163,7 +163,7 @@
                     Me a Coffee</a>
                 <a href="#faq" class="hover:text-yellow-400">FAQ</a>
             </div>
-            <a href="/app" id="cta-button"
+            <a onclick="showMaintenanceMessage()" id="cta-button"
                 class="bg-yellow-400 text-black px-2 py-2 rounded-lg hover:bg-yellow-300 transition duration-300">
                 Schedule now
             </a>
@@ -177,7 +177,7 @@
                 <p class="text-lg sm:text-xl mb-8 max-w-2xl mx-auto">
                     streamline your communication today. plan and send whatsApp messages at your preferred time
                 </p>
-                <a href="/app"
+                <a onclick="showMaintenanceMessage()"
                     class="bg-black text-white px-6 py-3 rounded-lg text-base sm:text-lg md:text-xl hover:bg-gray-800 transition duration-300 inline-flex items-center">
                     <span class="mr-2">⏰</span>
                     Schedule a Message
@@ -494,6 +494,37 @@
                 item.classList.remove('shadow-lg', 'scale-105');
             });
         });
+
+        function showMaintenanceMessage() {
+            const message = `
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" id="maintenance-modal">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100">
+                    <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mt-5">We're Leveling Up! 🚀</h3>
+                <div class="mt-2 px-7 py-3">
+                    <p class="text-sm text-gray-500">
+                        We're currently upgrading our infrastructure to serve you better. The scheduling feature will be back soon, stronger than ever!
+                    </p>
+                </div>
+                <div class="items-center px-4 py-3">
+                    <button id="ok-btn" class="px-4 py-2 bg-yellow-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-300">
+                        Got it, thanks!
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+            document.body.insertAdjacentHTML('beforeend', message);
+            document.getElementById("ok-btn").onclick = function () {
+                document.getElementById("maintenance-modal").remove();
+            }
+        }
     </script>
 </body>
 
