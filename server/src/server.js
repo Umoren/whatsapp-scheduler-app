@@ -1,6 +1,7 @@
 require('dotenv').config({ path: "../.env" });
 require("./instrument");
 const express = require('express');
+const path = require('path');
 const config = require('./config');
 const { setupMiddleware } = require('./middlewares');
 const routes = require('./routes');
@@ -8,7 +9,7 @@ const { gracefulShutdown, ensureInitialized } = require('./services/whatsappClie
 const { loadJobs } = require('./services/messageService');
 const errorHandler = require('./middlewares/errorHandler');
 const MemoryLeakMonitor = require('./utils/memoryLeakMonitor');
-const logger = require('./middlewares/logger');
+const { logger } = require('./middlewares/logger');
 
 const app = express();
 
@@ -27,7 +28,6 @@ memoryMonitor.start();
 
 async function initializeApp() {
     try {
-        // Initialize a default client
         await ensureInitialized('default');
         await loadJobs();
         logger.info('Scheduled jobs loaded successfully');
