@@ -2,7 +2,7 @@ name: Fly Deploy
 on:
   push:
     branches:
-      - main
+      - main #TODO: revisit branched deployments
 jobs:
   deploy:
     name: Deploy app
@@ -23,3 +23,5 @@ jobs:
           flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+
