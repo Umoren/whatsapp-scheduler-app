@@ -1,123 +1,73 @@
 require('dotenv').config({ path: "../.env" });
 require("./instrument");
 const express = require('express');
-const path = require('path');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
 const config = require('./config');
+const { setupMiddleware } = require('./middlewares');
 const routes = require('./routes');
 const { gracefulShutdown, ensureInitialized } = require('./services/whatsappClient');
 const { loadJobs } = require('./services/messageService');
 const errorHandler = require('./middlewares/errorHandler');
-const { loggingMiddleware } = require('./middlewares/logger');
+const MemoryLeakMonitor = require('./utils/memoryLeakMonitor');
+const logger = require('./middlewares/logger');
 
 const app = express();
 
-app.set('trust proxy', 1);
-
-// Middleware
-app.use(cors({
-    origin: ['https://whatsapp-scheduler-client.vercel.app', 'https://whatsapp-scheduler.fly.dev'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-}));
-
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(loggingMiddleware);
-
-const staticFileLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: (req) => {
-        return req.ip;
-    },
-});
-
-const catchAllLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 50,
-    standardHeaders: true,
-    legacyHeaders: false,
-    keyGenerator: (req) => {
-        return req.ip;
-    },
-});
+// Setup middleware
+setupMiddleware(app);
 
 // API routes
 app.use('/api', routes);
 
-// Serve static files and handle client-side routing
-if (process.env.NODE_ENV === 'production') {
-    const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
-    app.use(staticFileLimiter, express.static(clientDistPath));
-    app.get('*', catchAllLimiter, (req, res) => {
-        res.sendFile(path.join(clientDistPath, 'index.html'));
-    });
-}
-
 // Error handling
 app.use(errorHandler);
-app.use((err, req, res, next) => {
-    console.error('Unhandled error:', err);
-    console.error('Stack trace:', err.stack);
-    console.error('Request details:', {
-        method: req.method,
-        url: req.url,
-        headers: req.headers,
-        body: req.body
-    });
-    res.status(500).json({
-        error: 'An unexpected error occurred',
-        details: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-});
 
-// App initialization
+// Memory leak monitoring
+const memoryMonitor = new MemoryLeakMonitor(config.memoryMonitor);
+memoryMonitor.start();
+
 async function initializeApp() {
     try {
         // Initialize a default client
-
+        await ensureInitialized('default');
         await loadJobs();
-        console.log('Scheduled jobs loaded successfully');
+        logger.info('Scheduled jobs loaded successfully');
     } catch (err) {
-        console.error('Error during app initialization:', err);
-        console.log('Starting server without fully initialized WhatsApp client...');
+        logger.error('Error during app initialization:', err);
+        logger.warn('Starting server without fully initialized WhatsApp client...');
     }
 }
 
-// Server startup
-const startServer = async () => {
+async function startServer() {
     await initializeApp();
     const server = app.listen(config.PORT, config.HOST, () => {
-        console.log(`Server is running on ${config.HOST}:${config.PORT}`);
+        logger.info(`Server is running on ${config.HOST}:${config.PORT}`);
     });
 
     const shutdownServer = async () => {
-        console.log('Shutting down server...');
+        logger.info('Initiating graceful shutdown...');
         server.close(async () => {
-            console.log('Http server closed.');
+            logger.info('HTTP server closed.');
             try {
                 await gracefulShutdown();
-                console.log('WhatsApp clients shut down successfully.');
+                logger.info('WhatsApp clients shut down successfully.');
             } catch (error) {
-                console.error('Error during WhatsApp clients shutdown:', error);
+                logger.error('Error during WhatsApp clients shutdown:', error);
             }
+            memoryMonitor.stop();
             process.exit(0);
         });
 
         setTimeout(() => {
-            console.error('Could not close connections in time, forcefully shutting down');
+            logger.error('Could not close connections in time, forcefully shutting down');
             process.exit(1);
         }, 10000);
     };
 
     process.on('SIGTERM', shutdownServer);
     process.on('SIGINT', shutdownServer);
-};
+}
 
-startServer();
+startServer().catch(err => {
+    logger.error('Failed to start server:', err);
+    process.exit(1);
+});
