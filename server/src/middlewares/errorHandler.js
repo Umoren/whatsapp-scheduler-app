@@ -25,7 +25,11 @@ const errorHandler = (err, req, res, next) => {
     // If it's not one of our custom errors, it's an unexpected error
     logger.error('Unexpected error', { error: err, stack: err.stack });
     res.status(500).json({
-        error: 'An unexpected error occurred'
+        error: {
+            error: err,
+            stack: err.stack,
+            message: 'An unexpected error occurred'
+        },
     });
 };
 
