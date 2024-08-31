@@ -3,6 +3,7 @@ const path = require('path');
 const {
     ensureInitialized,
     getClientState,
+    updateClientHeartbeat
 } = require('../services/whatsappClient');
 const { sendTestMessage, scheduleMessage, cancelScheduledMessage, getScheduledJobs } = require('../services/messageService');
 const messageLimiter = require('../middlewares/rateLimiter');
@@ -21,6 +22,7 @@ router.get('/', (req, res) => {
 router.get('/qr', authMiddleware, async (req, res, next) => {
     logger.info('QR route accessed', { userId: req.user.id });
     try {
+        await updateClientHeartbeat(req.user.id);
         logger.debug('Ensuring client is initialized', { userId: req.user.id });
         await ensureInitialized(req.user.id);
 
@@ -54,6 +56,7 @@ router.get('/qr', authMiddleware, async (req, res, next) => {
 
 
 router.get('/auth-status', authMiddleware, async (req, res) => {
+    await updateClientHeartbeat(req.user.id);
     const clientState = await getClientState(req.user.id);
     res.json({
         isAuthenticated: clientState.isAuthenticated,
@@ -66,6 +69,7 @@ router.post('/send-message', authMiddleware, messageLimiter, async (req, res, ne
     const start = Date.now();
     logger.info('Received request to send message', { body: req.body, userId: req.user.id });
     try {
+        await updateClientHeartbeat(req.user.id);
         const client = await ensureInitialized(req.user.id);
         const validatedData = MessageSchema.parse(req.body);
         const { recipientType, recipientName, message, imageUrl } = validatedData;
@@ -101,6 +105,7 @@ router.post('/send-message', authMiddleware, messageLimiter, async (req, res, ne
 router.post('/schedule-message', authMiddleware, messageLimiter, async (req, res, next) => {
     logger.info('Schedule message route accessed', { userId: req.user.id });
     try {
+        await updateClientHeartbeat(req.user.id);
         await ensureInitialized(req.user.id);
         const validatedData = MessageSchema.parse(req.body);
         const { cronExpression, recipientType, recipientName, message, imageUrl } = validatedData;
@@ -151,6 +156,7 @@ router.delete('/cancel-schedule/:id', authMiddleware, async (req, res, next) => 
 router.get('/scheduled-jobs', authMiddleware, async (req, res, next) => {
     logger.info('Get scheduled jobs route accessed', { userId: req.user.id });
     try {
+        await updateClientHeartbeat(req.user.id);
         await ensureInitialized(req.user.id);
         const jobs = await getScheduledJobs(req.user.id);
         logger.info(`Returning ${jobs.length} jobs`, { userId: req.user.id });
