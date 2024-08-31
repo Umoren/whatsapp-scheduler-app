@@ -21,18 +21,31 @@ async function ensureInitialized(userId) {
 }
 
 async function getClientState(userId) {
-    logger.debug(`Getting client state for user ${userId}`);
-    const state = await UserSessionManager.getSessionState(userId);
-    logger.debug(`Retrieved client state for user ${userId}:`, state);
-    return state || {
-        isInitialized: false,
-        isAuthenticated: false,
-        qrCode: null,
-        lastHeartbeat: null
-    };
+    logger.debug('Getting client state', { userId });
+    try {
+        const state = await UserSessionManager.getSessionState(userId);
+        logger.debug('Client state retrieved', { userId, state });
+        return state || {
+            isInitialized: false,
+            isAuthenticated: false,
+            qrCode: null,
+            lastHeartbeat: null
+        };
+    } catch (error) {
+        logger.error('Error getting client state', { userId, error: error.message, stack: error.stack });
+        throw error;
+    }
 }
+
 async function updateClientHeartbeat(userId) {
-    await UserSessionManager.updateSessionHeartbeat(userId);
+    logger.debug('Updating client heartbeat', { userId });
+    try {
+        await UserSessionManager.updateSessionHeartbeat(userId);
+        logger.debug('Client heartbeat updated successfully', { userId });
+    } catch (error) {
+        logger.error('Error updating client heartbeat', { userId, error: error.message, stack: error.stack });
+        throw error;
+    }
 }
 
 async function removeClient(userId) {

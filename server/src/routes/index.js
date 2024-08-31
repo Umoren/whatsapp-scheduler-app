@@ -55,14 +55,29 @@ router.get('/qr', authMiddleware, async (req, res, next) => {
 });
 
 
-router.get('/auth-status', authMiddleware, async (req, res) => {
-    await updateClientHeartbeat(req.user.id);
-    const clientState = await getClientState(req.user.id);
-    res.json({
-        isAuthenticated: clientState.isAuthenticated,
-        isClientReady: clientState.isClientReady,
-        lastHeartbeat: clientState.lastHeartbeat ? new Date(clientState.lastHeartbeat) : null
-    });
+router.get('/auth-status', authMiddleware, async (req, res, next) => {
+    logger.info('Auth status route accessed', { userId: req.user.id });
+    try {
+        await updateClientHeartbeat(req.user.id);
+        logger.debug('Client heartbeat updated', { userId: req.user.id });
+
+        const clientState = await getClientState(req.user.id);
+        logger.debug('Client state retrieved', { userId: req.user.id, clientState });
+
+        res.json({
+            isAuthenticated: clientState.isAuthenticated,
+            isClientReady: clientState.isClientReady,
+            lastHeartbeat: clientState.lastHeartbeat ? new Date(clientState.lastHeartbeat) : null
+        });
+        logger.info('Auth status response sent', { userId: req.user.id });
+    } catch (error) {
+        logger.error('Error in auth-status route', {
+            error: error.message,
+            stack: error.stack,
+            userId: req.user.id
+        });
+        next(error);
+    }
 });
 
 router.post('/send-message', authMiddleware, messageLimiter, async (req, res, next) => {
