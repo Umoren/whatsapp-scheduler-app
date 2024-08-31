@@ -10,13 +10,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - name: Build client
+      - name: Build client and prepare server
         run: |
+          # Build client
           cd client
           npm install
           npm run build
-          mkdir -p ../server/src/client/dist
-          cp -r dist/* ../server/src/client/dist/
+
+          # Prepare server
+          cd ../server
+          npm install
+          mkdir -p src/client
+          cp -r ../client/dist src/client/
+
+          # Verify content
+          ls -R src/client/dist
+
       - name: Deploy to Fly
         run: |
           cd server
