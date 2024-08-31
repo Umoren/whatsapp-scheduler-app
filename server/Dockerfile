@@ -9,6 +9,9 @@ RUN npm install
 # Copy the rest of the server code
 COPY . .
 
+# Copy the client build
+COPY client/dist ./client/dist
+
 # Install system dependencies for Puppeteer
 RUN apt-get update && apt-get install -y \
     gconf-service libasound2 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 \

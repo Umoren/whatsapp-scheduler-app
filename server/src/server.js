@@ -10,6 +10,14 @@ const errorHandler = require('./middlewares/errorHandler');
 const MemoryLeakMonitor = require('./utils/memoryLeakMonitor');
 const { logger } = require('./middlewares/logger');
 
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+    logger.error('Uncaught Exception:', error);
+});
+
 const app = express();
 
 // Setup middleware
@@ -71,10 +79,3 @@ startServer().catch(err => {
     process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-process.on('uncaughtException', (error) => {
-    logger.error('Uncaught Exception:', error);
-});

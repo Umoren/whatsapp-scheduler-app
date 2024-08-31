@@ -37,9 +37,12 @@ function setupMiddleware(app) {
     });
 
     if (process.env.NODE_ENV === 'production') {
-        app.use(staticFileLimiter, express.static(path.join(__dirname, '..', '..', 'client', 'dist')));
+        // Serve static files from the client/dist directory
+        app.use(staticFileLimiter, express.static(path.join(__dirname, 'client', 'dist')));
+
+        // Handle client-side routing
         app.get('*', catchAllLimiter, (req, res) => {
-            res.sendFile(path.join(__dirname, '..', '..', 'client', 'dist', 'index.html'));
+            res.sendFile(path.join(__dirname, 'client', 'dist', 'index.html'));
         });
     }
 }

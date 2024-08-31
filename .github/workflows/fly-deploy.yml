@@ -2,7 +2,7 @@ name: Fly Deploy
 on:
   push:
     branches:
-      - main #TODO: revisit branched deployments
+      - main
 jobs:
   deploy:
     name: Deploy app
@@ -20,8 +20,8 @@ jobs:
       - name: Deploy to Fly
         run: |
           cd server
+          # Ensure the client build is included in the deployment
+          cp -r client ../
           flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-

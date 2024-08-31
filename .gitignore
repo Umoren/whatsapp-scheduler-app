@@ -78,8 +78,8 @@ dist
 Thumbs.db
 
 # Build output
-/dist
-/build
+# /dist
+# /build
 
 # Vite specific
 *.local
