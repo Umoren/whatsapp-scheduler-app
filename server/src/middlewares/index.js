@@ -3,6 +3,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const { loggingMiddleware } = require('./logger');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 
 function setupMiddleware(app) {
     app.set('trust proxy', 1);

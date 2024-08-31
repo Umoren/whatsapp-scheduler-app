@@ -1,7 +1,6 @@
 require('dotenv').config({ path: "../.env" });
 require("./instrument");
 const express = require('express');
-const path = require('path');
 const config = require('./config');
 const { setupMiddleware } = require('./middlewares');
 const routes = require('./routes');
