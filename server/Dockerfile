@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
-# Copy the rest of the server code
+# Copy the rest of the server code, including the client build
 COPY . .
 
 # Install system dependencies for Puppeteer

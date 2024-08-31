@@ -36,15 +36,14 @@ function setupMiddleware(app) {
         keyGenerator: (req) => req.ip,
     });
 
-    if (process.env.NODE_ENV === 'production') {
-        // Serve static files from the client/dist directory
-        app.use(staticFileLimiter, express.static(path.join(__dirname, '..', 'client', 'dist')));
+    // Serve static files from the client/dist directory
+    app.use(staticFileLimiter, express.static(path.join(__dirname, '..', 'client', 'dist')));
 
-        // Handle client-side routing
-        app.get('*', catchAllLimiter, (req, res) => {
-            res.sendFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
-        });
-    }
+    // Handle client-side routing
+    app.get('*', catchAllLimiter, (req, res) => {
+        res.sendFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
+    });
+
 }
 
 module.exports = { setupMiddleware };
