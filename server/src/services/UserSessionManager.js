@@ -83,6 +83,8 @@ class UserSessionManager {
 
         return this.sessions.get(userId);
     }
+
+
     setupClientListeners(userId, client) {
         client.on('qr', async (qr) => {
             logger.info(`QR RECEIVED for user ${userId}`);

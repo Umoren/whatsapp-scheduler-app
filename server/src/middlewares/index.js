@@ -36,6 +36,16 @@ function setupMiddleware(app) {
         keyGenerator: (req) => req.ip,
     });
 
+    const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
+    console.log('Client dist path:', clientDistPath);
+    console.log('Current directory:', __dirname);
+    console.log('Does client dist exist?', fs.existsSync(clientDistPath));
+
+    if (fs.existsSync(clientDistPath)) {
+        console.log('Contents of client dist:', fs.readdirSync(clientDistPath));
+    }
+
+
     // Serve static files from the client/dist directory
     app.use(staticFileLimiter, express.static(path.join(__dirname, '..', 'client', 'dist')));
 

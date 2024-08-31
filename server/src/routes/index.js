@@ -1,4 +1,5 @@
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 const {
     ensureInitialized,
@@ -50,7 +51,7 @@ router.get('/qr', authMiddleware, async (req, res, next) => {
         return res.status(202).json({ message: 'WhatsApp client initializing. Please try again shortly.' });
     } catch (error) {
         logger.error('Error in QR route', { error: error.message, stack: error.stack, userId: req.user.id });
-        return res.status(500).json({ error: 'An unexpected error occurred', details: error.message });
+        return res.status(500).json({ error: 'An unexpected error occurred', details: error });
     }
 });
 
@@ -185,5 +186,25 @@ router.get('/scheduled-jobs', authMiddleware, async (req, res, next) => {
 router.get('/health', (req, res) => {
     res.status(200).json({ status: 'healthy' });
 });
+
+router.get('/debug-dir', (req, res) => {
+    const rootDir = '/app';
+    const dirStructure = getDirStructure(rootDir);
+    res.json(dirStructure);
+});
+
+function getDirStructure(dir) {
+    const files = fs.readdirSync(dir);
+    const structure = {};
+    files.forEach(file => {
+        const fullPath = path.join(dir, file);
+        if (fs.statSync(fullPath).isDirectory()) {
+            structure[file] = getDirStructure(fullPath);
+        } else {
+            structure[file] = 'file';
+        }
+    });
+    return structure;
+}
 
 module.exports = router;
