@@ -86,7 +86,7 @@ function AppContent() {
     const [isWhatsAppAuthenticated, setIsWhatsAppAuthenticated] = useState(false);
     const [lastHeartbeat, setLastHeartbeat] = useState(null);
     const [lastAuthCheck, setLastAuthCheck] = useState(Date.now());
-    const [isAuthenticating, setIsAuthenticating] = useState(false);
+
 
     const AUTH_CHECK_INTERVAL = 5 * 60 * 1000;
 
@@ -186,27 +186,8 @@ function AppContent() {
         });
     }, [isLoading, isWhatsAppAuthenticated, isClientReady, session]);
 
-    const waitForClientReady = async () => {
-        let attempts = 0;
-        const maxAttempts = 10;
-        while (attempts < maxAttempts) {
-            try {
-                const response = await api.get('/auth-status');
-                if (response.data.isClientReady) {
-                    return;
-                }
-            } catch (error) {
-                console.error('Error checking client status:', error);
-            }
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds between checks
-            attempts++;
-        }
-        throw new Error('Client failed to become ready in time');
-    };
-
     const checkWhatsAppAuthStatus = useCallback(async () => {
         try {
-            setIsAuthenticating(true); // Start authentication process
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) {
                 setIsWhatsAppAuthenticated(false);
@@ -218,13 +199,7 @@ function AppContent() {
             const data = response.data;
 
             setIsWhatsAppAuthenticated(data.isAuthenticated);
-
-            if (data.isAuthenticated && !data.isClientReady) {
-                // If authenticated but client not ready, wait for it to be ready
-                await waitForClientReady();
-            }
-
-            setIsClientReady(data.isClientReady);
+            setIsClientReady(data.isAuthenticated);
             setLastHeartbeat(data.lastHeartbeat ? new Date(data.lastHeartbeat) : null);
             setLastAuthCheck(Date.now());
 
@@ -238,10 +213,10 @@ function AppContent() {
             setIsClientReady(false);
             showToast('error', 'Failed to check WhatsApp authentication status');
         } finally {
-            setIsAuthenticating(false);
             setIsLoading(false);
         }
     }, [isWhatsAppAuthenticated]);
+
 
     const handleLogout = async () => {
         try {
@@ -322,12 +297,12 @@ function AppContent() {
 
     // render content
     const renderContent = () => {
-        if (isLoading || isAuthenticating) {
+        if (isLoading) {
             return (
                 <Box display="flex" justifyContent="center" alignItems="center" height="200px">
                     <CircularProgress />
                     <Typography variant="h6" style={{ marginLeft: '20px' }}>
-                        {isAuthenticating ? 'Initializing WhatsApp...' : 'Loading...'}
+                        Initializing...
                     </Typography>
                 </Box>
             );
