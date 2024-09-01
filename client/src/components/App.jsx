@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { ThemeProvider, createTheme, styled } from '@mui/material/styles';
 import {
     CircularProgress, CssBaseline, Alert,
