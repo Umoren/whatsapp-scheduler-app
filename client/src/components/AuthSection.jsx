@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Typography, Button, Paper, Container, CircularProgress } from '@mui/material';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Box, Typography, Button, Paper, Container, CircularProgress, Fade } from '@mui/material';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import { showToast } from './toast';
 import api from '../utils/axiosConfig';
@@ -7,8 +7,9 @@ import api from '../utils/axiosConfig';
 function AuthSection({ onAuthenticated }) {
     const [qrCode, setQrCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [countdown, setCountdown] = useState(60);
 
-    const getQRCode = async () => {
+    const getQRCode = useCallback(async () => {
         setIsLoading(true);
         try {
             const response = await api.get('/qr');
@@ -19,6 +20,7 @@ function AuthSection({ onAuthenticated }) {
                 onAuthenticated();
             } else if (data.qrCode) {
                 setQrCode(data.qrCode);
+                setCountdown(60); // Reset countdown
                 showToast('info', 'Scan this QR code with WhatsApp to authenticate');
             } else {
                 throw new Error(data.error || 'Failed to get QR code');
@@ -29,30 +31,23 @@ function AuthSection({ onAuthenticated }) {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [onAuthenticated]);
 
     useEffect(() => {
-        getQRCode();  // Automatically try to get QR code on component mount
-    }, []);
+        getQRCode();
+    }, [getQRCode]);
 
     useEffect(() => {
-        const checkAuthAndGetQR = async () => {
-            try {
-                const response = await api.get('/auth-status');
-                if (response.data.isAuthenticated) {
-                    showToast('success', 'WhatsApp already authenticated');
-                    onAuthenticated();
-                } else {
-                    getQRCode();
-                }
-            } catch (error) {
-                console.error('Error checking auth status:', error);
-                getQRCode();
-            }
-        };
-
-        checkAuthAndGetQR();
-    }, []);
+        let timer;
+        if (qrCode && countdown > 0) {
+            timer = setInterval(() => {
+                setCountdown((prev) => prev - 1);
+            }, 1000);
+        } else if (countdown === 0) {
+            getQRCode(); // Automatically refresh when countdown reaches 0
+        }
+        return () => clearInterval(timer);
+    }, [qrCode, countdown, getQRCode]);
 
     return (
         <Container maxWidth="sm">
@@ -66,17 +61,24 @@ function AuthSection({ onAuthenticated }) {
 
                 <Box sx={{ my: 4 }}>
                     {qrCode ? (
-                        <Box
-                            component="img"
-                            src={qrCode}
-                            alt="QR Code"
-                            sx={{
-                                maxWidth: '100%',
-                                height: 'auto',
-                                borderRadius: 2,
-                                boxShadow: 3,
-                            }}
-                        />
+                        <Fade in={true}>
+                            <Box sx={{ position: 'relative' }}>
+                                <Box
+                                    component="img"
+                                    src={qrCode}
+                                    alt="QR Code"
+                                    sx={{
+                                        maxWidth: '100%',
+                                        height: 'auto',
+                                        borderRadius: 2,
+                                        boxShadow: 3,
+                                    }}
+                                />
+                                <Typography variant="caption" sx={{ mt: 2, display: 'block' }}>
+                                    QR Code expires in {countdown} seconds
+                                </Typography>
+                            </Box>
+                        </Fade>
                     ) : (
                         <Button
                             variant="contained"
@@ -90,6 +92,12 @@ function AuthSection({ onAuthenticated }) {
                         </Button>
                     )}
                 </Box>
+
+                <Typography variant="body2" sx={{ mt: 3 }}>
+                    1. Open WhatsApp on your phone<br />
+                    2. Tap Menu or Settings and select WhatsApp Web<br />
+                    3. Point your phone at this screen to capture the QR code
+                </Typography>
             </Paper>
         </Container>
     );

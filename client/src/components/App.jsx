@@ -85,6 +85,9 @@ function AppContent() {
     const [session, setSession] = useState(null);
     const [isWhatsAppAuthenticated, setIsWhatsAppAuthenticated] = useState(false);
     const [lastHeartbeat, setLastHeartbeat] = useState(null);
+    const [lastAuthCheck, setLastAuthCheck] = useState(Date.now());
+
+    const AUTH_CHECK_INTERVAL = 5 * 60 * 1000;
 
     useEffect(() => {
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
@@ -182,31 +185,37 @@ function AppContent() {
         });
     }, [isLoading, isWhatsAppAuthenticated, isClientReady, session]);
 
-    const checkWhatsAppAuthStatus = async () => {
+    const checkWhatsAppAuthStatus = useCallback(async () => {
         try {
             const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) return;
+            if (!session) {
+                setIsWhatsAppAuthenticated(false);
+                setIsClientReady(false);
+                return;
+            }
 
-            const response = await api.get('/auth-status', {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`
-                }
-            });
+            const response = await api.get('/auth-status');
             const data = response.data;
 
             setIsWhatsAppAuthenticated(data.isAuthenticated);
-            setIsClientReady(data.isAuthenticated); // Set isClientReady based on isAuthenticated
-            setIsLoading(false);
+            setIsClientReady(data.isAuthenticated);
             setLastHeartbeat(data.lastHeartbeat ? new Date(data.lastHeartbeat) : null);
+            setLastAuthCheck(Date.now());
+
+            if (!data.isAuthenticated && isWhatsAppAuthenticated) {
+                showToast('warning', 'WhatsApp connection lost. Please re-authenticate.');
+            }
 
         } catch (error) {
             console.error('Error checking WhatsApp auth status:', error);
-            showToast('error', 'Failed to check WhatsApp authentication status');
-            setIsLoading(false);
             setIsWhatsAppAuthenticated(false);
             setIsClientReady(false);
+            showToast('error', 'Failed to check WhatsApp authentication status');
+        } finally {
+            setIsLoading(false);
         }
-    };
+    }, [isWhatsAppAuthenticated]);
+
 
     const handleLogout = async () => {
         try {
@@ -220,8 +229,16 @@ function AppContent() {
         }
     };
 
+    const handleUserAction = useCallback(() => {
+        const now = Date.now();
+        if (now - lastAuthCheck > AUTH_CHECK_INTERVAL) {
+            checkWhatsAppAuthStatus();
+        }
+    }, [lastAuthCheck, checkWhatsAppAuthStatus]);
+
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
+        handleUserAction();
         if (isMobile) {
             setDrawerOpen(false);
         }
