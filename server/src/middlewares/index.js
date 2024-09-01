@@ -4,8 +4,11 @@ const bodyParser = require('body-parser');
 const { loggingMiddleware } = require('./logger');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
 
 function setupMiddleware(app) {
+    console.log('Setting up middleware...');
+
     app.set('trust proxy', 1);
 
     app.use(cors({
@@ -43,17 +46,19 @@ function setupMiddleware(app) {
 
     if (fs.existsSync(clientDistPath)) {
         console.log('Contents of client dist:', fs.readdirSync(clientDistPath));
+
+        // Serve static files from the client/dist directory
+        app.use(staticFileLimiter, express.static(clientDistPath));
+
+        // Handle client-side routing
+        app.get('*', catchAllLimiter, (req, res) => {
+            res.sendFile(path.join(clientDistPath, 'index.html'));
+        });
+    } else {
+        console.log('Client dist folder not found. Skipping static file serving.');
     }
 
-
-    // Serve static files from the client/dist directory
-    app.use(staticFileLimiter, express.static(path.join(__dirname, '..', 'client', 'dist')));
-
-    // Handle client-side routing
-    app.get('*', catchAllLimiter, (req, res) => {
-        res.sendFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
-    });
-
+    console.log('Middleware setup complete.');
 }
 
 module.exports = { setupMiddleware };
