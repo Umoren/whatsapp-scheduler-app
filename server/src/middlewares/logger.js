@@ -2,7 +2,6 @@ const winston = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');
 
-// Configure log levels
 const logLevels = {
     error: 0,
     warn: 1,
@@ -10,7 +9,6 @@ const logLevels = {
     debug: 3,
 };
 
-// Custom format to efficiently stringify objects
 const efficientStringifier = winston.format((info) => {
     const stringifyReplacer = (key, value) => {
         if (typeof value === 'object' && value !== null) {
@@ -26,7 +24,14 @@ const efficientStringifier = winston.format((info) => {
     return info;
 });
 
-// Configure transports
+const consoleFormat = winston.format.printf(({ level, message, timestamp, ...metadata }) => {
+    let msg = `${timestamp} [${level}]: ${message}`;
+    if (Object.keys(metadata).length > 0) {
+        msg += ` ${JSON.stringify(metadata)}`;
+    }
+    return msg;
+});
+
 const fileRotateTransport = new DailyRotateFile({
     filename: 'application-%DATE%.log',
     datePattern: 'YYYY-MM-DD',
@@ -41,22 +46,24 @@ const fileRotateTransport = new DailyRotateFile({
     )
 });
 
-// Create a Winston logger
 const logger = winston.createLogger({
     level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
     levels: logLevels,
-    transports: [fileRotateTransport],
+    format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.errors({ stack: true }),
+        winston.format.splat()
+    ),
+    transports: [
+        new winston.transports.Console({
+            format: winston.format.combine(
+                winston.format.colorize(),
+                consoleFormat
+            )
+        }),
+        fileRotateTransport
+    ],
 });
-
-// Add console transport for non-production environments
-if (process.env.NODE_ENV !== 'production') {
-    logger.add(new winston.transports.Console({
-        format: winston.format.combine(
-            winston.format.colorize(),
-            winston.format.simple()
-        ),
-    }));
-}
 
 // Implement a circular buffer for recent logs
 const recentLogs = [];

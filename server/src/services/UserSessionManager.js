@@ -117,11 +117,12 @@ class UserSessionManager {
         });
     }
 
-    updateSessionState(userId, newState) {
+    async updateSessionState(userId, newState) {
         const session = this.sessions.get(userId);
         if (session) {
             session.state = { ...session.state, ...newState };
             this.sessions.set(userId, session);
+            await this.persistSessionState(userId);
         }
     }
 
@@ -170,8 +171,10 @@ class UserSessionManager {
         return this.sessions.get(userId);
     }
     async persistSessionState(userId) {
+        logger.info(`Attempting to persist session state for user ${userId}`);
         const session = this.sessions.get(userId);
         if (!session) {
+            logger.warn(`No session found for user ${userId}, skipping persistence`);
             return;
         }
 
@@ -185,14 +188,15 @@ class UserSessionManager {
                 });
 
             if (error) {
-                logger.error(`Failed to persist session state for user ${userId}:`, error);
-                // If the error is due to the table not existing, we'll log it but not throw
-                // This allows the application to continue functioning even if persistence fails
+                logger.error(`Failed to persist session state for user ${userId}:`, { error });
+            } else {
+                logger.info(`Successfully persisted session state for user ${userId}`);
             }
         } catch (error) {
-            logger.error(`Unexpected error persisting session state for user ${userId}:`, error);
+            logger.error(`Unexpected error persisting session state for user ${userId}:`, { error });
         }
     }
+
     async updateSessionHeartbeat(userId) {
         this.updateSessionState(userId, { lastHeartbeat: Date.now() });
     }
