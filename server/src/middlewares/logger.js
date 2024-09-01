@@ -1,6 +1,7 @@
 const winston = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');
+const fs = require('fs');
 
 const logLevels = {
     error: 0,
@@ -32,13 +33,18 @@ const consoleFormat = winston.format.printf(({ level, message, timestamp, ...met
     return msg;
 });
 
+const logsDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir);
+}
+
 const fileRotateTransport = new DailyRotateFile({
     filename: 'application-%DATE%.log',
     datePattern: 'YYYY-MM-DD',
     zippedArchive: true,
     maxSize: '20m',
     maxFiles: '14d',
-    dirname: path.join(__dirname, '..', 'logs'),
+    dirname: logsDir,
     format: winston.format.combine(
         efficientStringifier(),
         winston.format.timestamp(),
@@ -49,19 +55,14 @@ const fileRotateTransport = new DailyRotateFile({
 const logger = winston.createLogger({
     level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
     levels: logLevels,
-    format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.errors({ stack: true }),
-        winston.format.splat()
-    ),
     transports: [
+        fileRotateTransport,
         new winston.transports.Console({
             format: winston.format.combine(
                 winston.format.colorize(),
-                consoleFormat
-            )
-        }),
-        fileRotateTransport
+                winston.format.simple()
+            ),
+        })
     ],
 });
 

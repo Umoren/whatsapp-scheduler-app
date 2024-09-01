@@ -13,10 +13,14 @@ min_machines_running = 1
 processes = ['app']
 
 [[vm]]
-memory = '1gb'
+memory = '2gb'
 cpu_kind = 'shared'
 cpus = 1
 
-[mounts]
+[[mounts]]
 source = "whatsapp_auth"
 destination = "/app/.wwebjs_auth"
+
+[[mounts]]
+source = "whatsapp_scheduler_logs"
+destination = "/app/logs"

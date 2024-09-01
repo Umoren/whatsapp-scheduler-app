@@ -184,7 +184,7 @@ class UserSessionManager {
                 state: session.state,
                 last_activity: new Date().toISOString()
             };
-            logger.info(`Attempting to persist data:`, { dataToInsert });
+            logger.info('Attempting to persist data');
             const { error } = await supabase
                 .from('user_whatsapp_sessions')
                 .upsert(dataToInsert);
