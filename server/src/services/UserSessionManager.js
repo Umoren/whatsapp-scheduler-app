@@ -200,7 +200,22 @@ class UserSessionManager {
     }
 
     async updateSessionHeartbeat(userId) {
-        this.updateSessionState(userId, { lastHeartbeat: Date.now() });
+        const now = Date.now();
+        await this.updateSessionState(userId, { lastHeartbeat: now });
+
+        // Update the last_activity in Supabase
+        try {
+            const { error } = await supabase
+                .from('user_whatsapp_sessions')
+                .update({ last_activity: new Date(now).toISOString() })
+                .eq('user_id', userId);
+
+            if (error) {
+                logger.error(`Failed to update last_activity in Supabase for user ${userId}:`, error);
+            }
+        } catch (error) {
+            logger.error(`Unexpected error updating last_activity in Supabase for user ${userId}:`, error);
+        }
     }
 
     async removeSession(userId) {
