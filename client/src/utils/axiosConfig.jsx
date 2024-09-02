@@ -11,9 +11,6 @@ instance.interceptors.request.use(
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session?.access_token) {
             config.headers['Authorization'] = `Bearer ${session.access_token}`;
-            console.log('Request with token:', config.url);
-        } else {
-            console.log('Request without token:', config.url);
         }
         return config;
     },
@@ -25,18 +22,24 @@ instance.interceptors.request.use(
 
 instance.interceptors.response.use(
     (response) => {
-        console.log('Response received:', response.config.url, response.status);
+        if (response.headers['x-new-token']) {
+            supabaseClient.auth.setSession({
+                access_token: response.headers['x-new-token'],
+                refresh_token: supabaseClient.auth.session()?.refresh_token
+            });
+        }
         return response;
     },
     async (error) => {
-        console.error('Response error:', error.response?.status, error.response?.data);
-        if (error.response && error.response.status === 401 && !error.config._retry) {
-            error.config._retry = true;
+        const originalRequest = error.config;
+        if (error.response.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
             try {
-                const { data: { session }, error: refreshError } = await supabaseClient.auth.refreshSession();
+                const { data, error: refreshError } = await supabaseClient.auth.refreshSession();
                 if (refreshError) throw refreshError;
-                error.config.headers['Authorization'] = `Bearer ${session.access_token}`;
-                return instance(error.config);
+
+                originalRequest.headers['Authorization'] = `Bearer ${data.session.access_token}`;
+                return instance(originalRequest);
             } catch (refreshError) {
                 showToast('error', 'Your session has expired. Please log in again.');
                 await supabaseClient.auth.signOut();
