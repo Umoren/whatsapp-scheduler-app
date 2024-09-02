@@ -2,7 +2,8 @@ const UserSessionManager = require('./UserSessionManager');
 const { createModuleLogger } = require('../middlewares/logger');
 const logger = createModuleLogger('sessionCleanupService');
 
-const INACTIVE_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+const AUTHENTICATED_TIMEOUT = 48 * 60 * 60 * 1000; // 48 hours
+const UNAUTHENTICATED_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 const CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const MAX_SESSIONS = 10; // Maximum number of concurrent sessions
 const SESSION_REPORT_INTERVAL = 60 * 60 * 1000; // 1 hour
@@ -18,11 +19,13 @@ function startSessionCleanup() {
 
         for (const [userId, session] of sortedSessions) {
             const lastActivity = session.state.lastHeartbeat;
-            const isInactive = now - lastActivity > INACTIVE_TIMEOUT;
+            const isAuthenticated = session.state.isAuthenticated;
+            const timeoutDuration = isAuthenticated ? AUTHENTICATED_TIMEOUT : UNAUTHENTICATED_TIMEOUT;
+            const isInactive = now - lastActivity > timeoutDuration;
             const shouldRemoveForCapacity = sessions.size > MAX_SESSIONS;
 
             if (isInactive || shouldRemoveForCapacity) {
-                logger.info(`Cleaning up session for user ${userId}. Reason: ${isInactive ? 'Inactive' : 'Capacity limit reached'}`);
+                logger.info(`Cleaning up session for user ${userId}. Reason: ${isInactive ? 'Inactive' : 'Capacity limit reached'}. Authenticated: ${isAuthenticated}`);
                 try {
                     await UserSessionManager.removeSession(userId);
                     logger.info(`Session for user ${userId} cleaned up successfully`);
@@ -47,9 +50,10 @@ function startSessionCleanup() {
 function startPeriodicSessionReport() {
     setInterval(() => {
         const sessions = UserSessionManager.sessions;
+        const now = Date.now();
         const activeSessions = [...sessions.entries()].filter(([_, session]) => {
-            const now = Date.now();
-            return now - session.state.lastHeartbeat <= INACTIVE_TIMEOUT;
+            const timeoutDuration = session.state.isAuthenticated ? AUTHENTICATED_TIMEOUT : UNAUTHENTICATED_TIMEOUT;
+            return now - session.state.lastHeartbeat <= timeoutDuration;
         });
 
         logger.info('Periodic Session Report', {
