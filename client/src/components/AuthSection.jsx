@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Typography, Button, Paper, Container, CircularProgress, Fade } from '@mui/material';
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, Typography, Button, Paper, Container, CircularProgress, LinearProgress } from '@mui/material';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import { showToast } from './toast';
 import api from '../utils/axiosConfig';
@@ -7,20 +7,21 @@ import api from '../utils/axiosConfig';
 function AuthSection({ onAuthenticated }) {
     const [qrCode, setQrCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [countdown, setCountdown] = useState(60);
+    const [isInitializing, setIsInitializing] = useState(false);
+    const [timeElapsed, setTimeElapsed] = useState(0);
+    const timerRef = useRef(null);
 
-    const getQRCode = useCallback(async () => {
+    const getQRCode = async () => {
         setIsLoading(true);
         try {
             const response = await api.get('/qr');
             const data = await response.data;
 
             if (data.authenticated) {
-                showToast('success', 'WhatsApp authenticated successfully');
-                onAuthenticated();
+                setIsInitializing(true);
+                startClientReadyCheck();
             } else if (data.qrCode) {
                 setQrCode(data.qrCode);
-                setCountdown(60); // Reset countdown
                 showToast('info', 'Scan this QR code with WhatsApp to authenticate');
             } else {
                 throw new Error(data.error || 'Failed to get QR code');
@@ -31,23 +32,46 @@ function AuthSection({ onAuthenticated }) {
         } finally {
             setIsLoading(false);
         }
-    }, [onAuthenticated]);
+    };
+
+    const startClientReadyCheck = () => {
+        setTimeElapsed(0);
+        if (timerRef.current) clearInterval(timerRef.current);
+
+        timerRef.current = setInterval(() => {
+            setTimeElapsed(prev => {
+                if (prev >= 180) {
+                    clearInterval(timerRef.current);
+                    showToast('error', 'Client initialization timed out. Please try again.');
+                    setIsInitializing(false);
+                    return 0;
+                }
+                return prev + 1;
+            });
+
+            checkClientReady();
+        }, 1000);
+    };
+
+    const checkClientReady = async () => {
+        try {
+            const response = await api.get('/auth-status');
+            if (response.data.isClientReady) {
+                clearInterval(timerRef.current);
+                showToast('success', 'WhatsApp client is ready');
+                onAuthenticated();
+            }
+        } catch (error) {
+            console.error('Error checking client status:', error);
+        }
+    };
 
     useEffect(() => {
         getQRCode();
-    }, [getQRCode]);
-
-    useEffect(() => {
-        let timer;
-        if (qrCode && countdown > 0) {
-            timer = setInterval(() => {
-                setCountdown((prev) => prev - 1);
-            }, 1000);
-        } else if (countdown === 0) {
-            getQRCode(); // Automatically refresh when countdown reaches 0
-        }
-        return () => clearInterval(timer);
-    }, [qrCode, countdown, getQRCode]);
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+        };
+    }, []);
 
     return (
         <Container maxWidth="sm">
@@ -55,14 +79,24 @@ function AuthSection({ onAuthenticated }) {
                 <Typography variant="h4" gutterBottom color="primary">
                     Connect WhatsApp
                 </Typography>
-                <Typography variant="subtitle1" gutterBottom color="text.secondary">
-                    Scan the QR code with your WhatsApp to use the scheduler
-                </Typography>
-
-                <Box sx={{ my: 4 }}>
-                    {qrCode ? (
-                        <Fade in={true}>
-                            <Box sx={{ position: 'relative' }}>
+                {isInitializing ? (
+                    <Box sx={{ my: 4 }}>
+                        <CircularProgress />
+                        <Typography variant="subtitle1" sx={{ mt: 2 }}>
+                            Initializing WhatsApp client...
+                        </Typography>
+                        <LinearProgress variant="determinate" value={(timeElapsed / 60) * 100} sx={{ mt: 2 }} />
+                        <Typography variant="body2" sx={{ mt: 1 }}>
+                            Time elapsed: {timeElapsed} seconds (Max 60 seconds)
+                        </Typography>
+                    </Box>
+                ) : (
+                    <>
+                        <Typography variant="subtitle1" gutterBottom color="text.secondary">
+                            Scan the QR code with your WhatsApp to use the scheduler
+                        </Typography>
+                        <Box sx={{ my: 4 }}>
+                            {qrCode ? (
                                 <Box
                                     component="img"
                                     src={qrCode}
@@ -74,30 +108,26 @@ function AuthSection({ onAuthenticated }) {
                                         boxShadow: 3,
                                     }}
                                 />
-                                <Typography variant="caption" sx={{ mt: 2, display: 'block' }}>
-                                    QR Code expires in {countdown} seconds
-                                </Typography>
-                            </Box>
-                        </Fade>
-                    ) : (
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            size="large"
-                            startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <QrCode2Icon />}
-                            onClick={getQRCode}
-                            disabled={isLoading}
-                        >
-                            {isLoading ? 'Generating...' : 'Refresh QR Code'}
-                        </Button>
-                    )}
-                </Box>
-
-                <Typography variant="body2" sx={{ mt: 3 }}>
-                    1. Open WhatsApp on your phone<br />
-                    2. Tap Menu or Settings and select WhatsApp Web<br />
-                    3. Point your phone at this screen to capture the QR code
-                </Typography>
+                            ) : (
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    size="large"
+                                    startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <QrCode2Icon />}
+                                    onClick={getQRCode}
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? 'Generating...' : 'Refresh QR Code'}
+                                </Button>
+                            )}
+                        </Box>
+                        <Typography variant="body2" sx={{ mt: 3 }}>
+                            1. Open WhatsApp on your phone<br />
+                            2. Tap Menu or Settings and select WhatsApp Web<br />
+                            3. Point your phone at this screen to capture the QR code
+                        </Typography>
+                    </>
+                )}
             </Paper>
         </Container>
     );
