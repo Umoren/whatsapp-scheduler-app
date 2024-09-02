@@ -1,8 +1,6 @@
 const { supabase } = require('../utils/supabaseClient');
 const { createModuleLogger } = require('./logger');
 const { UnauthorizedError } = require('../utils/errors');
-const jwt = require('jsonwebtoken');
-const config = require('../config');
 
 const logger = createModuleLogger('authMiddleware');
 
@@ -14,35 +12,21 @@ const authMiddleware = async (req, res, next) => {
     }
 
     try {
-        const decodedToken = jwt.verify(token, config.JWT_SECRET);
         const { data: { user }, error } = await supabase.auth.getUser(token);
-
-        if (error || !user) {
-            if (error?.status === 401) {
-                logger.warn('Token expired, attempting to refresh');
-                const { data, error: refreshError } = await supabase.auth.refreshSession({ refresh_token: decodedToken.refresh_token });
-                if (refreshError) throw refreshError;
-
-                user = data.user;
-                res.setHeader('X-New-Token', data.session.access_token);
-            } else {
-                throw error || new Error('User not found');
+        if (error) {
+            if (error.status === 403 && error.code === "session_not_found") {
+                logger.warn('Session not found', { error });
+                return next(new UnauthorizedError('Session expired. Please log in again.'));
             }
+            throw error;
         }
-
+        if (!user) throw new Error('User not found');
         req.user = user;
         logger.info('User authenticated', { userId: user.id });
-
-        // Update last activity
-        await supabase
-            .from('user_whatsapp_sessions')
-            .update({ last_activity: new Date().toISOString() })
-            .eq('user_id', user.id);
-
         next();
     } catch (error) {
         logger.error('Authentication failed', { error });
-        next(new UnauthorizedError('Invalid or expired token'));
+        next(new UnauthorizedError('Invalid token'));
     }
 };
 
