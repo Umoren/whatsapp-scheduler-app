@@ -9,7 +9,7 @@ const { loadJobs } = require('./services/messageService');
 const errorHandler = require('./middlewares/errorHandler');
 const MemoryLeakMonitor = require('./utils/memoryLeakMonitor');
 const { logger } = require('./middlewares/logger');
-
+const { startSessionCleanup } = require('./services/sessionCleanupService');
 
 const app = express();
 
@@ -25,6 +25,9 @@ app.use(errorHandler);
 // Memory leak monitoring
 const memoryMonitor = new MemoryLeakMonitor(config.memoryMonitor);
 memoryMonitor.start();
+
+// Start session cleanup
+startSessionCleanup();
 
 async function initializeApp() {
     try {
@@ -71,4 +74,3 @@ startServer().catch(err => {
     logger.error('Failed to start server:', err);
     process.exit(1);
 });
-

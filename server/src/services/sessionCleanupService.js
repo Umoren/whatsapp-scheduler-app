@@ -5,6 +5,7 @@ const logger = createModuleLogger('sessionCleanupService');
 const INACTIVE_TIMEOUT = 10 * 60 * 1000; // 10 minutes
 const CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const MAX_SESSIONS = 10; // Maximum number of concurrent sessions
+const SESSION_REPORT_INTERVAL = 60 * 60 * 1000; // 1 hour
 
 function startSessionCleanup() {
     setInterval(async () => {
@@ -38,6 +39,34 @@ function startSessionCleanup() {
 
         logger.info(`Session cleanup completed. Current session count: ${sessions.size}`);
     }, CLEANUP_INTERVAL);
+
+    // Start periodic session reporting
+    startPeriodicSessionReport();
+}
+
+function startPeriodicSessionReport() {
+    setInterval(() => {
+        const sessions = UserSessionManager.sessions;
+        const activeSessions = [...sessions.entries()].filter(([_, session]) => {
+            const now = Date.now();
+            return now - session.state.lastHeartbeat <= INACTIVE_TIMEOUT;
+        });
+
+        logger.info('Periodic Session Report', {
+            totalSessions: sessions.size,
+            activeSessions: activeSessions.length,
+            inactiveSessions: sessions.size - activeSessions.length
+        });
+
+        // Log details of each session if needed
+        activeSessions.forEach(([userId, session]) => {
+            logger.debug('Active session details', {
+                userId,
+                lastHeartbeat: new Date(session.state.lastHeartbeat).toISOString(),
+                isAuthenticated: session.state.isAuthenticated
+            });
+        });
+    }, SESSION_REPORT_INTERVAL);
 }
 
 module.exports = { startSessionCleanup };
