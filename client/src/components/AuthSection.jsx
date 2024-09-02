@@ -19,7 +19,7 @@ function AuthSection({ onAuthenticated }) {
 
             if (data.authenticated) {
                 setIsInitializing(true);
-                startClientReadyCheck();
+                initializeClient();
             } else if (data.qrCode) {
                 setQrCode(data.qrCode);
                 showToast('info', 'Scan this QR code with WhatsApp to authenticate');
@@ -34,13 +34,13 @@ function AuthSection({ onAuthenticated }) {
         }
     };
 
-    const startClientReadyCheck = () => {
+    const initializeClient = async () => {
         setTimeElapsed(0);
         if (timerRef.current) clearInterval(timerRef.current);
 
         timerRef.current = setInterval(() => {
             setTimeElapsed(prev => {
-                if (prev >= 180) {
+                if (prev >= 60) {
                     clearInterval(timerRef.current);
                     showToast('error', 'Client initialization timed out. Please try again.');
                     setIsInitializing(false);
@@ -48,21 +48,21 @@ function AuthSection({ onAuthenticated }) {
                 }
                 return prev + 1;
             });
-
-            checkClientReady();
         }, 1000);
-    };
 
-    const checkClientReady = async () => {
         try {
-            const response = await api.get('/auth-status');
+            const response = await api.post('/initialize-client');
             if (response.data.isClientReady) {
                 clearInterval(timerRef.current);
                 showToast('success', 'WhatsApp client is ready');
                 onAuthenticated();
+            } else {
+                throw new Error('Client not ready after initialization');
             }
         } catch (error) {
-            console.error('Error checking client status:', error);
+            console.error('Error initializing client:', error);
+            showToast('error', 'Failed to initialize WhatsApp client. Please try again.');
+            setIsInitializing(false);
         }
     };
 

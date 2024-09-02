@@ -81,6 +81,27 @@ router.get('/auth-status', authMiddleware, async (req, res, next) => {
     }
 });
 
+router.post('/initialize-client', authMiddleware, async (req, res, next) => {
+    logger.info('Initialize client route accessed', { userId: req.user.id });
+    try {
+        await ensureInitialized(req.user.id);
+        const clientState = await getClientState(req.user.id);
+        res.json({
+            isInitialized: clientState.isInitialized,
+            isAuthenticated: clientState.isAuthenticated,
+            isClientReady: clientState.isClientReady
+        });
+        logger.info('Client initialization response sent', { userId: req.user.id });
+    } catch (error) {
+        logger.error('Error in initialize-client route', {
+            error: error.message,
+            stack: error.stack,
+            userId: req.user.id
+        });
+        next(error);
+    }
+});
+
 router.post('/send-message', authMiddleware, messageLimiter, async (req, res, next) => {
     const start = Date.now();
     logger.info('Received request to send message', { body: req.body, userId: req.user.id });
