@@ -7,6 +7,7 @@ module.exports = {
     SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
     ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    JWT_SECRET: process.env.JWT_SECRET,
 
     // Memory Monitor Configuration
     memoryMonitor: {
