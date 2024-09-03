@@ -111,9 +111,16 @@ class UserSessionManager {
             this.updateSessionState(userId, { isAuthenticated: false });
         });
 
-        client.on('disconnected', (reason) => {
+        client.on('disconnected', async (reason) => {
             logger.warn(`Client was disconnected for user ${userId}`, reason);
-            this.sessions.delete(userId);
+            // Instead of deleting the session, update its state
+            await this.updateSessionState(userId, {
+                isAuthenticated: false,
+                qrCode: null,
+                isInitialized: false
+            });
+            // Reinitialize the client to generate a new QR code
+            this.getOrCreateSession(userId);
         });
     }
 
