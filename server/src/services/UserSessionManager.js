@@ -58,10 +58,11 @@ class UserSessionManager {
         }
     }
 
-
     async getOrCreateSession(userId) {
-        logger.info(`Getting or creating session for user ${userId}`);
-        if (!this.sessions.has(userId)) {
+        logger.debug(`Getting or creating session for user ${userId}`);
+        let session = this.sessions.get(userId);
+
+        if (!session || !session.state.isInitialized) {
             logger.info(`Creating new WhatsApp client for user ${userId}`);
             const client = new Client({
                 authStrategy: new LocalAuth({
@@ -76,7 +77,7 @@ class UserSessionManager {
                 },
             });
 
-            this.sessions.set(userId, {
+            session = {
                 client,
                 state: {
                     isInitialized: false,
@@ -84,33 +85,31 @@ class UserSessionManager {
                     qrCode: null,
                     lastHeartbeat: Date.now()
                 }
-            });
+            };
 
+            this.sessions.set(userId, session);
             this.setupClientListeners(userId, client);
 
             try {
-                logger.info(`Initializing client for user ${userId}`);
+                logger.debug(`Initializing client for user ${userId}`);
                 await client.initialize();
-                this.updateSessionState(userId, { isInitialized: true });
+                await this.updateSessionState(userId, { isInitialized: true });
                 logger.info(`WhatsApp client initialized for user ${userId}`);
             } catch (error) {
                 logger.error(`Failed to initialize WhatsApp client for user ${userId}`, error);
                 throw error;
             }
-        } else {
-            logger.info(`Session already exists for user ${userId}`);
         }
 
-        return this.sessions.get(userId);
+        return session;
     }
-
 
     setupClientListeners(userId, client) {
         client.on('qr', async (qr) => {
             logger.info(`QR RECEIVED for user ${userId}`);
             try {
                 const qrImageData = await qrcode.toDataURL(qr);
-                this.updateSessionState(userId, { qrCode: qrImageData });
+                await this.updateSessionState(userId, { qrCode: qrImageData, isAuthenticated: false });
             } catch (error) {
                 logger.error(`Failed to generate QR code for user ${userId}:`, error);
             }
@@ -128,12 +127,17 @@ class UserSessionManager {
 
         client.on('auth_failure', (msg) => {
             logger.error(`Authentication failure for user ${userId}:`, msg);
-            this.updateSessionState(userId, { isAuthenticated: false });
+            this.updateSessionState(userId, { isAuthenticated: false, qrCode: null });
         });
 
-        client.on('disconnected', (reason) => {
+        client.on('disconnected', async (reason) => {
             logger.warn(`Client was disconnected for user ${userId}`, reason);
-            this.sessions.delete(userId);
+            await this.updateSessionState(userId, {
+                isAuthenticated: false,
+                qrCode: null,
+                isInitialized: false
+            });
+            // We'll reinitialize in getOrCreateSession when needed
         });
     }
 
@@ -142,54 +146,11 @@ class UserSessionManager {
         if (session) {
             session.state = { ...session.state, ...newState };
             this.sessions.set(userId, session);
+            this.stateCache.set(userId, session.state);
             await this.persistSessionState(userId);
         }
     }
 
-    async getOrCreateSession(userId) {
-        logger.debug(`Getting or creating session for user ${userId}`);
-        if (!this.sessions.has(userId)) {
-            logger.info(`Creating new WhatsApp client for user ${userId}`);
-            const client = new Client({
-                authStrategy: new LocalAuth({
-                    clientId: `user-${userId}`,
-                    dataPath: path.join(BASE_AUTH_PATH, userId)
-                }),
-                puppeteer: {
-                    args: [
-                        "--no-sandbox", "--disable-setuid-sandbox", "--headless=new", "--single-process"
-                    ],
-                    headless: false
-                },
-            });
-
-            this.sessions.set(userId, {
-                client,
-                state: {
-                    isInitialized: false,
-                    isAuthenticated: false,
-                    qrCode: null,
-                    lastHeartbeat: Date.now()
-                }
-            });
-
-            this.setupClientListeners(userId, client);
-
-            try {
-                logger.debug(`Initializing client for user ${userId}`);
-                await client.initialize();
-                this.updateSessionState(userId, { isInitialized: true });
-                logger.info(`WhatsApp client initialized for user ${userId}`);
-            } catch (error) {
-                logger.error(`Failed to initialize WhatsApp client for user ${userId}`, error);
-                throw error;
-            }
-        } else {
-            logger.debug(`Session already exists for user ${userId}`);
-        }
-
-        return this.sessions.get(userId);
-    }
     async persistSessionState(userId) {
         logger.info(`Attempting to persist session state for user ${userId}`);
         const session = this.sessions.get(userId);
@@ -213,7 +174,6 @@ class UserSessionManager {
                 logger.error(`Failed to persist session state for user ${userId}:`, { error });
             } else {
                 logger.info(`Successfully persisted session state for user ${userId}`);
-                this.stateCache.set(userId, session.state);
             }
         } catch (error) {
             logger.error(`Unexpected error persisting session state for user ${userId}:`, { error });
