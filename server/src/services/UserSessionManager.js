@@ -3,6 +3,7 @@ const qrcode = require('qrcode');
 const path = require('path');
 const { createModuleLogger } = require('../middlewares/logger');
 const { supabase } = require('../utils/supabaseClient');
+const NodeCache = require('node-cache');
 
 const logger = createModuleLogger('UserSessionManager');
 
@@ -11,14 +12,28 @@ const BASE_AUTH_PATH = process.env.FLY_APP_NAME ? '/app/.wwebjs_auth' : path.joi
 class UserSessionManager {
     constructor() {
         this.sessions = new Map();
+        this.stateCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
     }
 
     async getSessionState(userId) {
         logger.debug(`Getting session state for user ${userId}`);
+
+        // Check in-memory cache first
+        let cachedState = this.stateCache.get(userId);
+        if (cachedState) {
+            logger.debug(`Retrieved cached state for user ${userId}`);
+            return cachedState;
+        }
+
+        // Check in-memory sessions
         const session = this.sessions.get(userId);
-        if (!session) {
-            logger.debug(`No session found for user ${userId}`);
-            // Check if there's a persisted state in Supabase
+        if (session) {
+            logger.debug(`Retrieved session state for user ${userId}:`, session.state);
+            return session.state;
+        }
+
+        // If not in memory, check Supabase
+        try {
             const { data, error } = await supabase
                 .from('user_whatsapp_sessions')
                 .select('state')
@@ -26,16 +41,21 @@ class UserSessionManager {
                 .single();
 
             if (error) {
+                if (error.code === 'PGRST116') {
+                    logger.debug(`No session found for user ${userId}`);
+                    return null;
+                }
                 logger.error(`Failed to fetch session state from Supabase for user ${userId}:`, error);
-                return null;
+                throw error;
             }
 
             logger.debug(`Retrieved persisted state for user ${userId}:`, data?.state);
+            this.stateCache.set(userId, data?.state);
             return data?.state || null;
+        } catch (error) {
+            logger.error(`Unexpected error fetching session state for user ${userId}:`, error);
+            return null;
         }
-
-        logger.debug(`Retrieved session state for user ${userId}:`, session.state);
-        return session.state;
     }
 
 
@@ -193,6 +213,7 @@ class UserSessionManager {
                 logger.error(`Failed to persist session state for user ${userId}:`, { error });
             } else {
                 logger.info(`Successfully persisted session state for user ${userId}`);
+                this.stateCache.set(userId, session.state);
             }
         } catch (error) {
             logger.error(`Unexpected error persisting session state for user ${userId}:`, { error });
@@ -224,6 +245,7 @@ class UserSessionManager {
             try {
                 await session.client.destroy();
                 this.sessions.delete(userId);
+                this.stateCache.del(userId);
                 await supabase
                     .from('user_whatsapp_sessions')
                     .delete()

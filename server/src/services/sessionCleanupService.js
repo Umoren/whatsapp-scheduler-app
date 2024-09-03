@@ -8,7 +8,7 @@ const CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const MAX_SESSIONS = 10; // Maximum number of concurrent sessions
 const SESSION_REPORT_INTERVAL = 60 * 60 * 1000; // 1 hour
 
-function startSessionCleanup() {
+async function startSessionCleanup() {
     setInterval(async () => {
         logger.info('Starting session cleanup');
         const sessions = UserSessionManager.sessions;
@@ -48,22 +48,25 @@ function startSessionCleanup() {
 }
 
 function startPeriodicSessionReport() {
-    setInterval(() => {
+    setInterval(async () => {
         const sessions = UserSessionManager.sessions;
         const now = Date.now();
-        const activeSessions = [...sessions.entries()].filter(([_, session]) => {
-            const timeoutDuration = session.state.isAuthenticated ? AUTHENTICATED_TIMEOUT : UNAUTHENTICATED_TIMEOUT;
-            return now - session.state.lastHeartbeat <= timeoutDuration;
-        });
+        const activeSessions = await Promise.all([...sessions.entries()].map(async ([userId, session]) => {
+            const state = await UserSessionManager.getSessionState(userId);
+            const timeoutDuration = state.isAuthenticated ? AUTHENTICATED_TIMEOUT : UNAUTHENTICATED_TIMEOUT;
+            return now - state.lastHeartbeat <= timeoutDuration ? [userId, session] : null;
+        }));
+
+        const filteredActiveSessions = activeSessions.filter(Boolean);
 
         logger.info('Periodic Session Report', {
             totalSessions: sessions.size,
-            activeSessions: activeSessions.length,
-            inactiveSessions: sessions.size - activeSessions.length
+            activeSessions: filteredActiveSessions.length,
+            inactiveSessions: sessions.size - filteredActiveSessions.length
         });
 
         // Log details of each session if needed
-        activeSessions.forEach(([userId, session]) => {
+        filteredActiveSessions.forEach(([userId, session]) => {
             logger.debug('Active session details', {
                 userId,
                 lastHeartbeat: new Date(session.state.lastHeartbeat).toISOString(),
