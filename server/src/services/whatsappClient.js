@@ -11,12 +11,6 @@ async function ensureInitialized(userId) {
 
     logger.info(`Ensuring WhatsApp client is initialized for user ${userId}`);
     try {
-        const sessionState = await UserSessionManager.getSessionState(userId);
-        if (sessionState && sessionState.isInitialized) {
-            logger.info(`WhatsApp client already initialized for user ${userId}`);
-            return UserSessionManager.sessions.get(userId).client;
-        }
-
         const { client } = await UserSessionManager.getOrCreateSession(userId);
         logger.info(`WhatsApp client ensured for user ${userId}`);
         return client;
