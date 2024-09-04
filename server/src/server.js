@@ -11,6 +11,7 @@ const MemoryLeakMonitor = require('./utils/memoryLeakMonitor');
 const { logger } = require('./middlewares/logger');
 const { startSessionCleanup } = require('./services/sessionCleanupService');
 const socketIo = require('socket.io');
+const http = require('http');
 
 const app = express();
 const server = http.createServer(app);
