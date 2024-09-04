@@ -4,8 +4,7 @@ import QrCode2Icon from '@mui/icons-material/QrCode2';
 import { showToast } from './toast';
 import api from '../utils/axiosConfig';
 
-function AuthSection({ onAuthenticated }) {
-    const [qrCode, setQrCode] = useState('');
+function AuthSection({ qrCode, onAuthenticated }) {
     const [isLoading, setIsLoading] = useState(false);
     const [isInitializing, setIsInitializing] = useState(false);
     const [timeElapsed, setTimeElapsed] = useState(0);
@@ -21,7 +20,6 @@ function AuthSection({ onAuthenticated }) {
                 setIsInitializing(true);
                 initializeClient();
             } else if (data.qrCode) {
-                setQrCode(data.qrCode);
                 showToast('info', 'Scan this QR code with WhatsApp to authenticate');
             } else {
                 throw new Error(data.error || 'Failed to get QR code');
@@ -67,11 +65,13 @@ function AuthSection({ onAuthenticated }) {
     };
 
     useEffect(() => {
-        getQRCode();
+        if (!qrCode) {
+            getQRCode();
+        }
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, []);
+    }, [qrCode]);
 
     return (
         <Container maxWidth="sm">

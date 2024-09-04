@@ -3,6 +3,7 @@ const qrcode = require('qrcode');
 const path = require('path');
 const { createModuleLogger } = require('../middlewares/logger');
 const { supabase } = require('../utils/supabaseClient');
+const { io } = require('../server');
 
 const logger = createModuleLogger('UserSessionManager');
 
@@ -90,7 +91,8 @@ class UserSessionManager {
             logger.info(`QR RECEIVED for user ${userId}`);
             try {
                 const qrImageData = await qrcode.toDataURL(qr);
-                this.updateSessionState(userId, { qrCode: qrImageData });
+                await this.updateSessionState(userId, { qrCode: qrImageData, isAuthenticated: false });
+                io.to(userId).emit('qrCode', qrImageData);
             } catch (error) {
                 logger.error(`Failed to generate QR code for user ${userId}:`, error);
             }
@@ -99,26 +101,29 @@ class UserSessionManager {
         client.on('ready', () => {
             logger.info(`Client is ready for user ${userId}`);
             this.updateSessionState(userId, { isAuthenticated: true, qrCode: null });
+            io.to(userId).emit('authenticated', true);
         });
 
         client.on('authenticated', () => {
             logger.info(`Client is authenticated for user ${userId}`);
             this.updateSessionState(userId, { isAuthenticated: true, qrCode: null });
+            io.to(userId).emit('authenticated', true);
         });
 
         client.on('auth_failure', (msg) => {
             logger.error(`Authentication failure for user ${userId}:`, msg);
             this.updateSessionState(userId, { isAuthenticated: false });
+            io.to(userId).emit('authFailure', msg);
         });
 
         client.on('disconnected', async (reason) => {
             logger.warn(`Client was disconnected for user ${userId}`, reason);
-            // Instead of deleting the session, update its state
             await this.updateSessionState(userId, {
                 isAuthenticated: false,
                 qrCode: null,
                 isInitialized: false
             });
+            io.to(userId).emit('disconnected', reason);
             // Reinitialize the client to generate a new QR code
             this.getOrCreateSession(userId);
         });

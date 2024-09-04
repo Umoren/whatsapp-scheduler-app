@@ -10,8 +10,16 @@ const errorHandler = require('./middlewares/errorHandler');
 const MemoryLeakMonitor = require('./utils/memoryLeakMonitor');
 const { logger } = require('./middlewares/logger');
 const { startSessionCleanup } = require('./services/sessionCleanupService');
+const socketIo = require('socket.io');
 
 const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+    cors: {
+        origin: config.CLIENT_URL,
+        methods: ["GET", "POST"]
+    }
+});
 
 // Setup middleware
 setupMiddleware(app);
@@ -21,6 +29,21 @@ app.use('/api', routes);
 
 // Error handling
 app.use(errorHandler);
+
+// WebSocket connection handling
+io.on('connection', (socket) => {
+    logger.info('New WebSocket connection established');
+
+    socket.on('register', (userId) => {
+        logger.info(`User registered for real-time updates: ${userId}`);
+        socket.join(userId);
+    });
+
+    socket.on('disconnect', () => {
+        logger.info('WebSocket connection closed');
+    });
+});
+
 
 // Memory leak monitoring
 const memoryMonitor = new MemoryLeakMonitor(config.memoryMonitor);
@@ -74,3 +97,5 @@ startServer().catch(err => {
     logger.error('Failed to start server:', err);
     process.exit(1);
 });
+
+module.exports = { io };

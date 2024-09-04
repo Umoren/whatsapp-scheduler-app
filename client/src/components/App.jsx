@@ -33,6 +33,7 @@ import api from '../utils/axiosConfig';
 import { showToast } from './toast';
 import { supabaseClient } from '../utils/supabaseClientConfig';
 import Login from './Login';
+import io from 'socket.io-client';
 
 const MessageForm = lazy(() => import('./MessageForm'));
 const AuthSection = lazy(() => import('./AuthSection'));
@@ -86,9 +87,12 @@ function AppContent() {
     const [isWhatsAppAuthenticated, setIsWhatsAppAuthenticated] = useState(false);
     const [lastHeartbeat, setLastHeartbeat] = useState(null);
     const [lastAuthCheck, setLastAuthCheck] = useState(Date.now());
+    const [qrCode, setQrCode] = useState(null);
+    const [socket, setSocket] = useState(null);
 
 
     const AUTH_CHECK_INTERVAL = 5 * 60 * 1000;
+
 
     useEffect(() => {
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
@@ -176,6 +180,44 @@ function AppContent() {
         return () => clearInterval(interval);
     }, [isWhatsAppAuthenticated, isClientReady, fetchJobs]);
 
+    useEffect(() => {
+        const newSocket = io(import.meta.env.VITE_WEBSOCKET_URL);;
+        setSocket(newSocket);
+
+        newSocket.on('connect', () => {
+            console.log('Connected to WebSocket server');
+        });
+
+        newSocket.on('qrCode', (qrCodeData) => {
+            setQrCode(qrCodeData);
+            setIsWhatsAppAuthenticated(false);
+        });
+
+        newSocket.on('authenticated', () => {
+            setIsWhatsAppAuthenticated(true);
+            setIsClientReady(true);
+            setQrCode(null);
+        });
+
+        newSocket.on('authFailure', (msg) => {
+            console.error('Authentication failure:', msg);
+            setIsWhatsAppAuthenticated(false);
+            setIsClientReady(false);
+            showToast('error', `WhatsApp authentication failed: ${msg}`);
+        });
+
+        newSocket.on('disconnected', (reason) => {
+            console.warn('Disconnected:', reason);
+            setIsWhatsAppAuthenticated(false);
+            setIsClientReady(false);
+            showToast('warning', `WhatsApp disconnected: ${reason}`);
+        });
+
+        return () => {
+            newSocket.disconnect();
+        };
+    }, []);
+
     // log state changes
     useEffect(() => {
         console.log('State changed:', {
@@ -199,12 +241,17 @@ function AppContent() {
             const data = response.data;
 
             setIsWhatsAppAuthenticated(data.isAuthenticated);
-            setIsClientReady(data.isAuthenticated);
+            setIsClientReady(data.isClientReady);
             setLastHeartbeat(data.lastHeartbeat ? new Date(data.lastHeartbeat) : null);
             setLastAuthCheck(Date.now());
 
             if (!data.isAuthenticated && isWhatsAppAuthenticated) {
                 showToast('warning', 'WhatsApp connection lost. Please re-authenticate.');
+            }
+
+            // Emit a 'register' event to the server with the user's ID
+            if (socket && data.isAuthenticated) {
+                socket.emit('register', session.user.id);
             }
 
         } catch (error) {
@@ -215,7 +262,7 @@ function AppContent() {
         } finally {
             setIsLoading(false);
         }
-    }, [isWhatsAppAuthenticated]);
+    }, [isWhatsAppAuthenticated, socket]);
 
 
     const handleLogout = async () => {
@@ -313,7 +360,7 @@ function AppContent() {
         }
 
         if (!isWhatsAppAuthenticated) {
-            return <AuthSection onAuthenticated={() => {
+            return <AuthSection qrCode={qrCode} onAuthenticated={() => {
                 setIsWhatsAppAuthenticated(true);
                 setIsClientReady(true);
             }} />;
