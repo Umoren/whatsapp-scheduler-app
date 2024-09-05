@@ -17,7 +17,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
     cors: {
-        origin: config.CLIENT_URL,
+        origin: "*",
         methods: ["GET", "POST"]
     }
 });
@@ -33,6 +33,7 @@ app.use(errorHandler);
 
 // WebSocket connection handling
 io.on('connection', (socket) => {
+    console.log('A user connected');
     logger.info('New WebSocket connection established');
 
     socket.on('register', (userId) => {
