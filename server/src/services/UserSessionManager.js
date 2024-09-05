@@ -90,9 +90,17 @@ class UserSessionManager {
         client.on('qr', async (qr) => {
             logger.info(`QR RECEIVED for user ${userId}`);
             try {
-                const qrImageData = await qrcode.toDataURL(qr);
-                await this.updateSessionState(userId, { qrCode: qrImageData, isAuthenticated: false });
-                io.to(userId).emit('qrCode', qrImageData);
+                if (qr) {
+                    const qrImageData = await qrcode.toDataURL(qr);
+                    await this.updateSessionState(userId, { qrCode: qrImageData, isAuthenticated: false });
+                    io.to(userId).emit('qrCode', qrImageData, (error) => {
+                        if (error) {
+                            logger.error(`Error sending QR code to user ${userId}:`, error);
+                        }
+                    });
+                } else {
+                    logger.warn(`Received empty QR code for user ${userId}`);
+                }
             } catch (error) {
                 logger.error(`Failed to generate QR code for user ${userId}:`, error);
             }

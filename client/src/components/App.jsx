@@ -183,6 +183,8 @@ function AppContent() {
     useEffect(() => {
         const newSocket = io(import.meta.env.VITE_WEBSOCKET_URL, {
             transports: ['websocket'],
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
         });;
         setSocket(newSocket);
 
@@ -216,6 +218,10 @@ function AppContent() {
             setIsWhatsAppAuthenticated(false);
             setIsClientReady(false);
             showToast('warning', `WhatsApp disconnected: ${reason}`);
+        });
+
+        newSocket.on('connect_error', (error) => {
+            console.error('WebSocket connection error:', error);
         });
 
         return () => {

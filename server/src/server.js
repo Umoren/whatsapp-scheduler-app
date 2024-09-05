@@ -33,19 +33,21 @@ app.use(errorHandler);
 
 // WebSocket connection handling
 io.on('connection', (socket) => {
-    console.log('A user connected');
-    logger.info('New WebSocket connection established');
+    logger.info(`New WebSocket connection: ${socket.id}`);
 
     socket.on('register', (userId) => {
-        logger.info(`User registered for real-time updates: ${userId}`);
+        logger.info(`User registered for real-time updates: ${userId}, socket: ${socket.id}`);
         socket.join(userId);
     });
 
-    socket.on('disconnect', () => {
-        logger.info('WebSocket connection closed');
+    socket.on('disconnect', (reason) => {
+        logger.info(`WebSocket disconnected: ${socket.id}, reason: ${reason}`);
+    });
+
+    socket.on('error', (error) => {
+        logger.error(`WebSocket error: ${socket.id}`, error);
     });
 });
-
 
 // Memory leak monitoring
 const memoryMonitor = new MemoryLeakMonitor(config.memoryMonitor);
@@ -56,7 +58,6 @@ startSessionCleanup();
 
 async function initializeApp() {
     try {
-        await ensureInitialized('default');
         await loadJobs();
         logger.info('Scheduled jobs loaded successfully');
     } catch (err) {
